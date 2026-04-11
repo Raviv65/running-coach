@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}History — Running coach{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<h1>90-day trends</h1>
+<p class="sub">Training load and recovery signals (UTC dates).</p>
+
+<div class="chart-wrap">
+  <h3>CTL · ATL · TSB</h3>
+  <canvas id="chartLoad" height="120"></canvas>
+</div>
+<div class="chart-wrap">
+  <h3>HRV (RMSSD)</h3>
+  <canvas id="chartHrv" height="100"></canvas>
+</div>
+<div class="chart-wrap">
+  <h3>Sleep duration (min)</h3>
+  <canvas id="chartSleep" height="100"></canvas>
+</div>
+<div class="chart-wrap">
+  <h3>Resting HR</h3>
+  <canvas id="chartRhr" height="100"></canvas>
+</div>
+
+<script>
+  const payload = {{ chart_payload | tojson }};
+  const labels = payload.labels;
+
+  const common = {
+    responsive: true,
+    maintainAspectRatio: true,
+    scales: {
+      x: {
+        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+        grid: { display: false }
+      }
+    },
+    plugins: { legend: { position: "bottom" } }
+  };
+
+  new Chart(document.getElementById("chartLoad"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "CTL", data: payload.ctl, borderColor: "#2563eb", tension: 0.2, spanGaps: true },
+        { label: "ATL", data: payload.atl, borderColor: "#f97316", tension: 0.2, spanGaps: true },
+        { label: "TSB", data: payload.tsb, borderColor: "#22c55e", tension: 0.2, spanGaps: true }
+      ]
+    },
+    options: common
+  });
+
+  new Chart(document.getElementById("chartHrv"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "HRV", data: payload.hrv, borderColor: "#7c3aed", tension: 0.2, spanGaps: true }
+      ]
+    },
+    options: common
+  });
+
+  new Chart(document.getElementById("chartSleep"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Sleep min", data: payload.sleep, borderColor: "#0ea5e9", tension: 0.2, spanGaps: true }
+      ]
+    },
+    options: common
+  });
+
+  new Chart(document.getElementById("chartRhr"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "RHR", data: payload.rhr, borderColor: "#dc2626", tension: 0.2, spanGaps: true }
+      ]
+    },
+    options: common
+  });
+</script>
+{% endblock %}

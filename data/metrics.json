@@ -1,0 +1,17 @@
+{
+  "metrics": {},
+  "activities": {},
+  "briefings": {},
+  "meta": {
+    "last_sync": null,
+    "trimp_history": [],
+    "seed_ctl": 41,
+    "seed_atl": 47,
+    "athlete": {
+      "name": "Raviv",
+      "goal": "10 km in 60 min",
+      "watch": "Suunto Vertical",
+      "threshold_hr": 160
+    }
+  }
+}
