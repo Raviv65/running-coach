@@ -107,6 +107,7 @@ new Chart(document.getElementById('hrChart'), {
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button onclick="addRow()" style="padding:7px 16px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:0.9rem;">+ Add Row</button>
       <button onclick="analyzeSegments()" style="padding:7px 20px;background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.9rem;">Analyze</button>
+      <button onclick="saveSegments()" style="padding:7px 20px;background:#15803d;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.9rem;">💾 Save</button>
     </div>
     <div id="seg-summary" style="margin-top:16px;"></div>
   </div>
@@ -114,6 +115,52 @@ new Chart(document.getElementById('hrChart'), {
 
 <script>
 const hrSeries = {{ activity.get('hr_timeseries', []) | tojson }};
+const savedSegments = {{ activity.get('segments', []) | tojson }};
+window.addEventListener('DOMContentLoaded', () => {
+  if (savedSegments && savedSegments.length > 0) {
+    const rows = document.getElementById('seg-body').rows;
+    savedSegments.forEach((seg, i) => {
+      if (i < rows.length) {
+        rows[i].querySelector('.seg-dur').value = seg.duration || '';
+        rows[i].querySelector('.seg-spd').value = seg.speed || '';
+      } else {
+        addRow();
+        const newRows = document.getElementById('seg-body').rows;
+        newRows[i].querySelector('.seg-dur').value = seg.duration || '';
+        newRows[i].querySelector('.seg-spd').value = seg.speed || '';
+      }
+    });
+    analyzeSegments();
+  }
+});
+
+function saveSegments() {
+  const rows = document.getElementById('seg-body').rows;
+  const segments = [];
+  for (let i = 0; i < rows.length; i++) {
+    const dur = rows[i].querySelector('.seg-dur').value;
+    const spd = rows[i].querySelector('.seg-spd').value;
+    if (dur || spd) {
+      segments.push({ duration: dur, speed: spd });
+    }
+  }
+  fetch('/activity/{{ activity.get("id") }}/segments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ segments })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('seg-summary').innerHTML =
+        '<p style="color:#15803d;font-size:0.88rem;">✅ Segments saved.</p>';
+    }
+  })
+  .catch(() => {
+    document.getElementById('seg-summary').innerHTML =
+      '<p style="color:#dc2626;">❌ Save failed.</p>';
+  });
+}
 
 function parseDuration(str) {
   const parts = str.trim().split(':');

@@ -426,6 +426,19 @@ def upload_activity():
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
 
 
+@app.route("/activity/<activity_id>/segments", methods=["POST"])
+def save_segments(activity_id):
+    db = load_metrics()
+    acts = db.get("activities", {})
+    for day_acts in acts.values():
+        for a in day_acts:
+            if str(a.get("id", "")) == activity_id:
+                a["segments"] = request.json.get("segments", [])
+                save_metrics(db)
+                return jsonify({"ok": True})
+    abort(404)
+
+
 @app.route("/activity/<activity_id>")
 def activity_detail(activity_id):
     db = load_metrics()
