@@ -5,15 +5,15 @@
 <h1 style="margin-top:12px;">{{ activity.get('title', 'Activity') }} — {{ activity.date }}</h1>
 
 <div class="metrics-grid" style="margin-bottom:20px;">
-  <div class="card mcard"><div class="label">Distance</div><div class="value">{{ activity.get('distance_km') }} km</div></div>
-  <div class="card mcard"><div class="label">Duration</div><div class="value">{{ activity.get('duration_min') }} min</div></div>
-  <div class="card mcard"><div class="label">TRIMP</div><div class="value">{{ activity.get('trimp') }}</div></div>
-  <div class="card mcard"><div class="label">Avg HR</div><div class="value">{{ activity.get('avg_hr') }} bpm</div></div>
-  <div class="card mcard"><div class="label">Max HR</div><div class="value">{{ activity.get('max_hr') }} bpm</div></div>
-  <div class="card mcard"><div class="label">PTE</div><div class="value">{{ activity.get('peak_training_effect') }}</div></div>
-  <div class="card mcard"><div class="label">EPOC</div><div class="value">{{ activity.get('epoc') }}</div></div>
-  <div class="card mcard"><div class="label">Recovery</div><div class="value">{{ activity.get('recovery_time_hrs') }}h</div></div>
-  <div class="card mcard"><div class="label">Steps</div><div class="value">{{ activity.get('step_count') }}</div></div>
+  <div class="card mcard"><div class="label">Distance</div><div class="value">{% if activity.get('distance_km') is not none %}{{ activity.get('distance_km') }} km{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Duration</div><div class="value">{% if activity.get('duration_min') is not none %}{{ "%.1f"|format(activity.get('duration_min')) }} min{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">TRIMP</div><div class="value">{% if activity.get('trimp') is not none %}{{ activity.get('trimp') }}{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Avg HR</div><div class="value">{% if activity.get('avg_hr') is not none %}{{ activity.get('avg_hr') }} bpm{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Max HR</div><div class="value">{% if activity.get('max_hr') is not none %}{{ activity.get('max_hr') }} bpm{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">PTE</div><div class="value">{% if activity.get('peak_training_effect') is not none %}{{ activity.get('peak_training_effect') }}{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">EPOC</div><div class="value">{% if activity.get('epoc') is not none %}{{ activity.get('epoc') }}{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Recovery</div><div class="value">{% if activity.get('recovery_time_hrs') is not none %}{{ activity.get('recovery_time_hrs') }}h{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Steps</div><div class="value">{% if activity.get('step_count') is not none %}{{ activity.get('step_count') }}{% else %}—{% endif %}</div></div>
 </div>
 
 {% set zones = activity.get('hr_zones', {}) %}
