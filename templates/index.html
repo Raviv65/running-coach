@@ -7,72 +7,79 @@
 </div>
 <p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
-<!-- Charts row with metrics underneath each -->
 <div class="charts-row">
+
+  <!-- LEFT: CTL/ATL chart + 6 boxes in 2x3 grid -->
   <div class="chart-col">
     <div class="card chart-card">
       <div class="label">CTL vs ATL — Last 7 Days</div>
       <canvas id="loadChart" height="120"></canvas>
     </div>
-    <div class="grid grid-2">
-      <div class="card">
+    <div class="metrics-grid">
+      <div class="card mcard">
         <div class="label">CTL</div>
         <div class="value">{{ metrics.get("ctl") if metrics.get("ctl") is not none else "—" }}</div>
       </div>
-      <div class="card">
+      <div class="card mcard">
         <div class="label">ATL</div>
         {% set atl = metrics.get("atl") %}
         {% set ctl = metrics.get("ctl") %}
-        <div class="value" style="color: {% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
+        <div class="value" style="color:{% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
           {{ atl if atl is not none else "—" }}
         </div>
       </div>
-      <div class="card">
+      <div class="card mcard">
         <div class="label">TSB</div>
         {% set tsb = metrics.get("tsb") %}
-        <div class="value" style="color: {% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">
+        <div class="value" style="color:{% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">
           {{ tsb if tsb is not none else "—" }}
         </div>
       </div>
-      <div class="card">
-        <div class="label">A:C</div>
+      <div class="card mcard">
+        <div class="label">A:C Ratio</div>
         <div class="value">{{ metrics.get("ac_ratio") if metrics.get("ac_ratio") is not none else "—" }}</div>
       </div>
-      <div class="card">
+      <div class="card mcard">
         <div class="label">Recovery</div>
         <div class="value">{{ metrics.get("recovery_score") if metrics.get("recovery_score") is not none else "—" }}</div>
-        <div class="hint">0–100 proxy</div>
+        <div class="hint">0–100</div>
       </div>
-    </div>
-  </div>
-
-  <div class="chart-col">
-    <div class="card chart-card">
-      <div class="label">HRV — Last 7 Days</div>
-      <canvas id="hrvChart" height="120"></canvas>
-    </div>
-    <div class="grid grid-2">
-      <div class="card">
-        <div class="label">HRV (7d avg)</div>
-        <div class="value">{{ metrics.get("hrv_7d_avg") if metrics.get("hrv_7d_avg") is not none else "—" }}</div>
-        <div class="hint">RMSSD ms</div>
-      </div>
-      <div class="card">
-        <div class="label">Sleep</div>
-        {% set sleep_min = metrics.get("sleep_duration_min") %}
-        {% set sleep_hrs = (sleep_min | float) / 60 if sleep_min is not none else none %}
-        <div class="value" style="color: {% if sleep_hrs is not none %}{% if sleep_hrs < 6 %}#dc2626{% elif sleep_hrs < 7 %}#c2410c{% else %}#15803d{% endif %}{% endif %}">
-          {% if sleep_min is not none %}{{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m{% else %}—{% endif %}
-        </div>
-        {% set sq = metrics.get("sleep_quality") %}
-        <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
-      </div>
-      <div class="card">
+      <div class="card mcard">
         <div class="label">Resting HR</div>
         <div class="value">{{ metrics.get("resting_hr") if metrics.get("resting_hr") is not none else "—" }}</div>
       </div>
     </div>
   </div>
+
+  <!-- RIGHT: HRV chart + 3 boxes, padded to align -->
+  <div class="chart-col">
+    <div class="card chart-card">
+      <div class="label">HRV — Last 7 Days</div>
+      <canvas id="hrvChart" height="120"></canvas>
+    </div>
+    <div class="metrics-grid">
+      <div class="card mcard">
+        <div class="label">HRV (7d avg)</div>
+        <div class="value">{{ metrics.get("hrv_7d_avg") if metrics.get("hrv_7d_avg") is not none else "—" }}</div>
+        <div class="hint">RMSSD ms</div>
+      </div>
+      <div class="card mcard">
+        <div class="label">Sleep</div>
+        {% set sleep_min = metrics.get("sleep_duration_min") %}
+        {% set sleep_hrs = (sleep_min | float) / 60 if sleep_min is not none else none %}
+        <div class="value" style="color:{% if sleep_hrs is not none %}{% if sleep_hrs < 6 %}#dc2626{% elif sleep_hrs < 7 %}#c2410c{% else %}#15803d{% endif %}{% endif %}">
+          {% if sleep_min is not none %}{{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m{% else %}—{% endif %}
+        </div>
+        {% set sq = metrics.get("sleep_quality") %}
+        <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
+      </div>
+      <div class="card mcard" style="visibility:hidden;"></div>
+      <div class="card mcard" style="visibility:hidden;"></div>
+      <div class="card mcard" style="visibility:hidden;"></div>
+      <div class="card mcard" style="visibility:hidden;"></div>
+    </div>
+  </div>
+
 </div>
 
 <section class="block">
@@ -81,137 +88,87 @@
     {% if briefing_html %}
       {{ briefing_html|safe }}
     {% else %}
-      <p class="sub">No briefing yet. The morning job (05:00 UTC) will generate one after the first successful sync.</p>
+      <p class="sub">No briefing yet. The morning job (05:00 UTC) will generate one.</p>
     {% endif %}
   </div>
 </section>
 
 <style>
-.day-badge {
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
+.day-badge { padding:4px 14px; border-radius:20px; font-size:0.9rem; font-weight:600; }
+.badge-green { background:rgba(34,197,94,0.15); color:#15803d; }
+.badge-amber { background:rgba(249,115,22,0.15); color:#c2410c; }
+.badge-red   { background:rgba(239,68,68,0.15);  color:#dc2626; }
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.badge-green { background: rgba(34,197,94,0.15); color: #15803d; }
-.badge-amber { background: rgba(249,115,22,0.15); color: #c2410c; }
-.badge-red   { background: rgba(239,68,68,0.15);  color: #dc2626; }
-.grid-2 .card {
-  min-height: 90px;
+.chart-col { display:flex; flex-direction:column; gap:12px; }
+.chart-card { padding:16px; }
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.mcard {
+  min-height: 80px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding-top: 14px;
+  padding: 12px 14px;
 }
-.chart-col .grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
+
+@media (max-width:640px) {
+  .charts-row { grid-template-columns:1fr; }
+  .metrics-grid { grid-template-columns:1fr 1fr; }
 }
 </style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const history = {{ chart_history | tojson }};
-
-function fmtDate(iso) {
-  const [y, m, d] = iso.split('-');
-  return `${d}-${m}-${y}`;
-}
-
+function fmtDate(iso) { const [y,m,d]=iso.split('-'); return `${d}-${m}-${y}`; }
 const labels  = history.map(r => fmtDate(r.date));
 const ctlData = history.map(r => r.ctl);
 const atlData = history.map(r => r.atl);
 const hrvData = history.map(r => r.hrv);
 
 const commonOpts = {
-  responsive: true,
-  maintainAspectRatio: true,
-  scales: {
-    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }
-  },
-  plugins: { legend: { position: "bottom" } }
+  responsive:true, maintainAspectRatio:true,
+  scales:{ x:{ ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7}, grid:{display:false} } },
+  plugins:{ legend:{ position:'bottom', labels:{boxWidth:12,font:{size:11}} } }
 };
 
-new Chart(document.getElementById("loadChart"), {
-  type: "line",
-  data: {
+new Chart(document.getElementById('loadChart'), {
+  type:'line', data:{
     labels,
-    datasets: [
-      { label: "CTL", data: ctlData, borderColor: "#2563eb", tension: 0.2, spanGaps: true },
-      { label: "ATL", data: atlData, borderColor: "#f97316", tension: 0.2, spanGaps: true }
+    datasets:[
+      { label:'CTL', data:ctlData, borderColor:'#2563eb', tension:0.2, spanGaps:true },
+      { label:'ATL', data:atlData, borderColor:'#f97316', tension:0.2, spanGaps:true }
     ]
-  },
-  options: commonOpts
+  }, options:commonOpts
 });
 
-// HRV line chart with normal range band
 const hrv30avg = {{ metrics.get("hrv_30d_avg") or 29 }};
-const hrvLow = Math.round(hrv30avg * 0.85);
+const hrvLow  = Math.round(hrv30avg * 0.85);
 const hrvHigh = Math.round(hrv30avg * 1.15);
 
 new Chart(document.getElementById('hrvChart'), {
-  type: 'line',
-  data: {
+  type:'line', data:{
     labels,
-    datasets: [
-      {
-        label: '_high',
-        data: labels.map(() => hrvHigh),
-        borderColor: 'transparent',
-        backgroundColor: 'rgba(34,197,94,0.12)',
-        pointRadius: 0,
-        fill: '+1',
-        tension: 0,
-      },
-      {
-        label: '_low',
-        data: labels.map(() => hrvLow),
-        borderColor: 'transparent',
-        backgroundColor: 'rgba(34,197,94,0.12)',
-        pointRadius: 0,
-        fill: false,
-        tension: 0,
-      },
-      {
-        label: 'Avg HRV (30d)',
-        data: labels.map(() => Math.round(hrv30avg)),
-        borderColor: 'rgba(34,197,94,0.5)',
-        backgroundColor: 'transparent',
-        borderDash: [4, 4],
-        pointRadius: 0,
-        fill: false,
-        tension: 0,
-      },
-      {
-        label: 'HRV (RMSSD)',
-        data: hrvData,
-        borderColor: 'rgba(34,197,94,0.9)',
-        backgroundColor: 'transparent',
-        tension: 0.3,
-        pointRadius: 5,
-        pointBackgroundColor: hrvData.map(v =>
-          v === null ? 'transparent' :
-          v >= hrvHigh ? 'rgba(249,115,22,0.9)' :
-          v <= hrvLow ? 'rgba(239,68,68,0.9)' :
-          'rgba(34,197,94,0.9)'
-        ),
-        fill: false
-      }
+    datasets:[
+      { label:'_high', data:labels.map(()=>hrvHigh), borderColor:'transparent', backgroundColor:'rgba(34,197,94,0.12)', pointRadius:0, fill:'+1', tension:0 },
+      { label:'_low',  data:labels.map(()=>hrvLow),  borderColor:'transparent', backgroundColor:'rgba(34,197,94,0.12)', pointRadius:0, fill:false, tension:0 },
+      { label:'Avg (30d)', data:labels.map(()=>Math.round(hrv30avg)), borderColor:'rgba(34,197,94,0.5)', borderDash:[4,4], pointRadius:0, fill:false, tension:0 },
+      { label:'HRV', data:hrvData, borderColor:'rgba(34,197,94,0.9)', tension:0.3, pointRadius:5,
+        pointBackgroundColor:hrvData.map(v=>v===null?'transparent':v>=hrvHigh?'#f97316':v<=hrvLow?'#dc2626':'rgba(34,197,94,0.9)'),
+        fill:false }
     ]
   },
-  options: {
-    ...commonOpts,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          boxWidth: 12,
-          font: { size: 11 },
-          filter: (item) => !item.text.startsWith('_')
-        }
-      }
-    }
-  }
+  options:{ ...commonOpts, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11}, filter:i=>!i.text.startsWith('_') } } } }
 });
 </script>
 {% endblock %}
