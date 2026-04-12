@@ -32,7 +32,8 @@ from compute import (
     daily_trimp_totals,
 )
 from email_sender import markdown_to_html, send_briefing_email
-from storage import load_metrics, save_metrics
+from storage import load_metrics, restore_from_github, save_metrics
+restore_from_github()
 from sync import (
     RunalyzeClient,
     extract_daily_wellness,

@@ -49,6 +49,34 @@ def save_metrics(data: dict[str, Any]) -> None:
                 pass
 
 
+def restore_from_github() -> bool:
+    """Pull metrics.json from GitHub backup on startup if local file is missing."""
+    token = os.environ.get("GITHUB_TOKEN")
+    repo = os.environ.get("GITHUB_REPO")
+    if not token or not repo:
+        return False
+    path = metrics_path()
+    if path.exists():
+        return False  # already have local copy, no need to restore
+    try:
+        import urllib.request
+        url = f"https://api.github.com/repos/{repo}/contents/data/metrics.json"
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3.raw",
+            "User-Agent": "running-coach",
+        })
+        with urllib.request.urlopen(req, timeout=15) as r:
+            content = r.read()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        logger.info("Restored metrics.json from GitHub (%d bytes)", len(content))
+        return True
+    except Exception as e:
+        logger.warning("GitHub restore failed: %s", e)
+        return False
+
+
 def default_structure() -> dict[str, Any]:
     return {
         "metrics": {},
