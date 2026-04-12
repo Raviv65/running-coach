@@ -61,7 +61,6 @@
       <div class="card mcard">
         <div class="label">HRV (7d avg)</div>
         <div class="value">{{ metrics.get("hrv_7d_avg") if metrics.get("hrv_7d_avg") is not none else "—" }}</div>
-        <div class="hint">RMSSD ms</div>
       </div>
       <div class="card mcard">
         <div class="label">Sleep</div>
@@ -70,10 +69,14 @@
         <div class="value" style="color:{% if sleep_hrs is not none %}{% if sleep_hrs < 6 %}#dc2626{% elif sleep_hrs < 7 %}#c2410c{% else %}#15803d{% endif %}{% endif %}">
           {% if sleep_min is not none %}{{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m{% else %}—{% endif %}
         </div>
-        {% set sq = metrics.get("sleep_quality") %}
-        <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
       </div>
-      <div class="card mcard" style="visibility:hidden;"></div>
+      <div class="card mcard">
+        <div class="label">Sleep Quality</div>
+        {% set sq = metrics.get("sleep_quality") %}
+        <div class="value" style="color:{% if sq is not none %}{% if sq >= 80 %}#15803d{% elif sq >= 60 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">
+          {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}
+        </div>
+      </div>
       <div class="card mcard" style="visibility:hidden;"></div>
       <div class="card mcard" style="visibility:hidden;"></div>
       <div class="card mcard" style="visibility:hidden;"></div>
