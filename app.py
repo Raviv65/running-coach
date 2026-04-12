@@ -298,17 +298,18 @@ def index():
     m = (db.get("metrics") or {}).get(today) or {}
     b = (db.get("briefings") or {}).get(today) or {}
     athlete = (db.get("meta") or {}).get("athlete") or {}
-    metrics_all = db.get("metrics") or {}
-    keys_7 = sorted(metrics_all.keys())[-7:]
-    chart_history = [
-        {
-            "date": k,
-            "ctl": metrics_all[k].get("ctl"),
-            "atl": metrics_all[k].get("atl"),
-            "hrv": metrics_all[k].get("hrv_last"),
-        }
-        for k in keys_7
-    ]
+    # Build 7-day history for charts
+    chart_history = []
+    for i in range(6, -1, -1):
+        d = (date.fromisoformat(today) - timedelta(days=i)).isoformat()
+        md = (db.get("metrics") or {}).get(d, {})
+        chart_history.append({
+            "date": d,
+            "ctl": md.get("ctl"),
+            "atl": md.get("atl"),
+            "hrv": md.get("hrv_last"),
+        })
+
     return render_template(
         "index.html",
         today=today,
