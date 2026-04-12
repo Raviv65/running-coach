@@ -310,6 +310,22 @@ def index():
             "hrv": md.get("hrv_last"),
         })
 
+    # Derive day status label
+    recovery = m.get("recovery_score")
+    tsb = m.get("tsb")
+
+    if recovery is not None and tsb is not None:
+        if recovery >= 70 and tsb >= -7:
+            day_status = ("Quality Run Day", "green")
+        elif recovery >= 50 and tsb >= -12:
+            day_status = ("Steady Run Day", "amber")
+        elif recovery >= 35 and tsb >= -20:
+            day_status = ("Easy Run Day", "amber")
+        else:
+            day_status = ("Rest Day", "red")
+    else:
+        day_status = ("Data Pending", "amber")
+
     return render_template(
         "index.html",
         today=today,
@@ -318,6 +334,7 @@ def index():
         athlete=athlete,
         last_sync=(db.get("meta") or {}).get("last_sync"),
         chart_history=chart_history,
+        day_status=day_status,
     )
 
 
