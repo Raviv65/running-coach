@@ -119,15 +119,68 @@ new Chart(document.getElementById("loadChart"), {
   options: commonOpts
 });
 
-new Chart(document.getElementById("hrvChart"), {
-  type: "line",
+// HRV line chart with normal range band
+const hrv30avg = {{ metrics.get("hrv_30d_avg") or 29 }};
+const hrvLow = Math.round(hrv30avg * 0.85);
+const hrvHigh = Math.round(hrv30avg * 1.15);
+
+new Chart(document.getElementById('hrvChart'), {
+  type: 'line',
   data: {
     labels,
     datasets: [
-      { label: "HRV", data: hrvData, borderColor: "#7c3aed", tension: 0.2, spanGaps: true }
+      {
+        label: 'Normal range (high)',
+        data: labels.map(() => hrvHigh),
+        borderColor: 'transparent',
+        backgroundColor: 'rgba(34,197,94,0.12)',
+        pointRadius: 0,
+        fill: '+1',
+        tension: 0,
+      },
+      {
+        label: 'Normal range (low)',
+        data: labels.map(() => hrvLow),
+        borderColor: 'transparent',
+        backgroundColor: 'rgba(34,197,94,0.12)',
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      },
+      {
+        label: 'HRV (RMSSD)',
+        data: hrvData,
+        borderColor: 'rgba(34,197,94,0.9)',
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 5,
+        pointBackgroundColor: hrvData.map(v =>
+          v === null ? 'transparent' :
+          v >= hrvHigh ? 'rgba(249,115,22,0.9)' :
+          v <= hrvLow ? 'rgba(239,68,68,0.9)' :
+          'rgba(34,197,94,0.9)'
+        ),
+        fill: false
+      }
     ]
   },
-  options: commonOpts
+  options: {
+    ...commonOpts,
+    plugins: {
+      ...commonOpts.plugins,
+      tooltip: {
+        callbacks: {
+          afterBody: (items) => {
+            const v = items[0]?.raw;
+            if (v === null) return '';
+            if (v >= hrvHigh) return '↑ Above normal range';
+            if (v <= hrvLow) return '↓ Below normal range';
+            return '✓ Within normal range';
+          }
+        }
+      }
+    }
+  }
 });
 </script>
 {% endblock %}
