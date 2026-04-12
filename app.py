@@ -402,7 +402,11 @@ def upload_activity():
     acts = db.setdefault("activities", {})
     day = result["date"]
     existing = acts.get(day, [])
-    already = any(abs(a.get("duration_min", 0) - result["duration_min"]) < 1 for a in existing)
+    already = any(
+        abs(a.get("duration_min", 0) - result["duration_min"]) < 1
+        and a.get("hr_timeseries") is not None
+        for a in existing
+    )
     if not already:
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
         existing.append(result)
