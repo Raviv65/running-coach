@@ -102,9 +102,9 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     activities: list[dict[str, Any]] = []
     try:
         if client.token:
-            activities = client.fetch_activities(days_back=120)
             if not client.ping():
-                logger.warning("Runalyze ping failed; token may be invalid.")
+                logger.warning("Runalyze ping failed; token may be invalid. Attempting fetch anyway.")
+            activities = client.fetch_activities(days_back=120)
         else:
             logger.warning("RUNALYZE_TOKEN not set; using stored activities only.")
     except Exception:
@@ -128,6 +128,12 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     today_well, est_flags = merge_wellness_into_state(metrics, fresh_wellness, today)
 
     daily_trimp = daily_trimp_totals(grouped)
+    if grouped and all(v == 0.0 for v in daily_trimp.values()):
+        logger.warning(
+            "All %d activity-days have zero TRIMP/TSS. "
+            "Run client.debug_activity_fields() to identify the correct field name.",
+            len(grouped),
+        )
     start_d = today_d - timedelta(days=119)
     expanded = expand_calendar(daily_trimp, start_d, today_d)
 
@@ -138,11 +144,29 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         seed_ctl=float(seed_ctl) if seed_ctl is not None else None,
         seed_atl=float(seed_atl) if seed_atl is not None else None,
     )
-    enrich_metrics_history(metrics, series)
+
+    # Preserve Excel-seeded CTL/ATL/TSB as ground truth.
+    # seed_historical.py records the last Excel date in meta["last_excel_seed_date"].
+    # Only compute forward from that boundary; don't touch earlier dates.
+    last_excel_date = meta.get("last_excel_seed_date")
+    last_excel_m = metrics.get(last_excel_date, {}) if last_excel_date else {}
+    if last_excel_date and last_excel_m.get("ctl") is not None:
+        last_seed_d = date.fromisoformat(last_excel_date)
+        fwd_start = last_seed_d + timedelta(days=1)
+        fwd_expanded = expand_calendar(daily_trimp, fwd_start, today_d)
+        fwd_series = ctl_atl_tsb_series(
+            fwd_expanded,
+            seed_ctl=float(last_excel_m["ctl"]),
+            seed_atl=float(last_excel_m["atl"]),
+        )
+        enrich_metrics_history(metrics, fwd_series)
+        series = fwd_series  # use forward series for today's ramp/TSB lookups below
+    else:
+        enrich_metrics_history(metrics, series)
 
     m_today = metrics.setdefault(today, {})
     m_today.update(today_well)
-    m_today["estimated"] = est_flags
+    m_today["estimated"] = {f: True for f, v in est_flags.items() if v}
 
     keys_sorted = sorted(metrics.keys())
     a7 = _mean_field(metrics, keys_sorted, "hrv_last", 7)

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def metrics_path() -> Path:
@@ -19,8 +22,12 @@ def load_metrics() -> dict[str, Any]:
     path = metrics_path()
     if not path.exists():
         return default_structure()
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error("metrics.json is corrupted (%s); falling back to empty state", e)
+        return default_structure()
 
 
 def save_metrics(data: dict[str, Any]) -> None:

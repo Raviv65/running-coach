@@ -23,6 +23,8 @@ def daily_trimp_totals(activities_by_date: dict[str, list[dict[str, Any]]]) -> d
         s = 0.0
         for a in acts:
             t = a.get("trimp")
+            if t is None:
+                t = a.get("tss")  # TSS is an acceptable TRIMP proxy when TRIMP is absent
             if t is not None:
                 s += float(t)
         out[d] = s
@@ -58,9 +60,10 @@ def ctl_atl_tsb_series(
     out: dict[str, dict[str, float]] = {}
     for d in sorted(daily_trimp.keys()):
         t = float(daily_trimp.get(d, 0.0) or 0.0)
+        tsb = ctl - atl          # before today's load
         ctl = ctl * a_c + t * b_c
         atl = atl * a_a + t * b_a
-        out[d] = {"ctl": ctl, "atl": atl, "tsb": ctl - atl}
+        out[d] = {"ctl": ctl, "atl": atl, "tsb": tsb}
     return out
 
 

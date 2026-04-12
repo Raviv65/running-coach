@@ -19,6 +19,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 DEFAULT_ACTIVITY_URLS = (
+    "/activity",
     "/activities",
     "/sport-activities",
     "/training/activities",
@@ -139,29 +140,38 @@ class RunalyzeClient:
                 "trainingImpulse",
                 "training_impulse",
                 "trimpScore",
-                "value",
-                "s",
+                # "value" and "s" intentionally omitted: "s" = seconds (duration),
+                # "value" is too generic. Both cause false TRIMP hits.
             ),
         )
         tss = _pick_float(raw, ("tss", "stress", "trainingStressScore", "training_stress"))
+        # "date_time" is Runalyze v1's datetime field; keep legacy names as fallbacks
         started = _pick_str(
             raw,
-            ("time", "startTime", "startedAt", "date", "datetime", "begin", "start"),
+            ("date_time", "time", "startTime", "startedAt", "date", "datetime", "begin", "start"),
         )
-        sport = _pick_str(raw, ("sport", "sportid", "type", "activityType", "name"))
-        title = _pick_str(raw, ("title", "name", "note"))
+        # sport and type can be nested objects {id, name, category} — extract name string
+        raw_sport = raw.get("sport")
+        if isinstance(raw_sport, dict):
+            sport = (raw_sport.get("category") or raw_sport.get("name") or "").lower()
+        else:
+            sport = (_pick_str(raw, ("sport", "sportid", "activityType")) or "").lower()
+        # title: prefer explicit title/note, fall back to activity type name
+        raw_type = raw.get("type")
+        type_name = raw_type.get("name") if isinstance(raw_type, dict) else None
+        title = _pick_str(raw, ("title", "name", "note")) or type_name or "Activity"
         aid = raw.get("id") or raw.get("@id") or raw.get("uuid")
         dist = _pick_float(raw, ("distance", "route", "kilometer"))
-        if dist and dist > 200:  # meters
+        if dist and dist > 200:  # meters → km
             dist = dist / 1000.0
-        dur = _pick_float(raw, ("duration", "s", "elapsedTime"))
-        if dur and dur > 10000:  # assume seconds
+        dur = _pick_float(raw, ("duration", "elapsed_time", "elapsedTime", "s"))
+        if dur and dur >= 600:  # values ≥ 600 are in seconds (≥10-min run); realistic minutes are <600
             dur = dur / 60.0
         d_iso = _parse_activity_date(started)
         return {
             "id": str(aid) if aid is not None else started or "unknown",
             "title": title or "Activity",
-            "sport": (sport or "").lower(),
+            "sport": sport,
             "started_at": started,
             "date": d_iso,
             "trimp": trimp,
@@ -171,19 +181,54 @@ class RunalyzeClient:
             "raw_keys": list(raw.keys())[:20],
         }
 
-    def fetch_wellness_snapshots(self) -> list[dict[str, Any]]:
-        """Pull daily wellness-ish documents if the API exposes them."""
-        urls_env = os.environ.get("RUNALYZE_WELLNESS_URLS")
-        paths = [p.strip() for p in urls_env.split(",")] if urls_env else list(DEFAULT_WELLNESS_URLS)
+    def debug_activity_fields(self) -> None:
+        """Fetch the first available activity and log its raw keys and values."""
+        urls_env = os.environ.get("RUNALYZE_ACTIVITY_URLS")
+        paths = [p.strip() for p in urls_env.split(",")] if urls_env else list(DEFAULT_ACTIVITY_URLS)
         for path in paths:
-            code, body = self._get(path)
+            code, body = self._get(path, {"itemsPerPage": 1, "page": 1})
             if code != 200:
                 continue
             rows = self._iter_members(body)
+            if not rows and isinstance(body, dict):
+                rows = self._iter_members(body.get("@graph"))
             if rows:
-                logger.info("Runalyze wellness: using %s (%s rows)", path, len(rows))
-                return rows
-        return []
+                raw = rows[0]
+                logger.info("[debug_activity_fields] endpoint: %s", path)
+                for k, v in raw.items():
+                    logger.info("  %r: %r", k, v)
+                return
+        logger.warning("[debug_activity_fields] no activity found across known endpoints")
+
+    def fetch_wellness_snapshots(self) -> list[dict[str, Any]]:
+        """Pull HRV and sleep from dedicated Runalyze endpoints and merge by date."""
+        merged: dict[str, dict[str, Any]] = {}
+
+        # HRV
+        code, body = self._get("/metrics/hrv")
+        if code == 200:
+            rows = body if isinstance(body, list) else self._iter_members(body)
+            for row in rows:
+                raw_date = _pick_str(row, ("date_time", "date", "day"))
+                d = raw_date[:10] if raw_date else None
+                if d:
+                    merged.setdefault(d, {})["rmssd"] = row.get("value") or row.get("rmssd")
+
+        # Sleep
+        code, body = self._get("/metrics/sleep")
+        if code == 200:
+            rows = body if isinstance(body, list) else self._iter_members(body)
+            for row in rows:
+                raw_date = _pick_str(row, ("date_time", "date", "day"))
+                d = raw_date[:10] if raw_date else None
+                if d:
+                    merged.setdefault(d, {}).update({
+                        "sleepDuration": row.get("duration"),
+                        "sleepQuality": row.get("quality_100"),
+                        "heartRateRest": row.get("hr_lowest"),
+                    })
+
+        return [{"date": d, **v} for d, v in merged.items()]
 
 
 def _pick_float(d: dict[str, Any], keys: tuple[str, ...]) -> float | None:
@@ -236,8 +281,10 @@ def _is_running_activity(a: dict[str, Any]) -> bool:
         return True
     if "run" in sport or sport in ("running", "jogging", "trail", "track"):
         return True
-    if sport.isdigit():
+    if sport == "1":
         return True
+    if sport.isdigit():
+        return False
     return False
 
 
@@ -272,7 +319,7 @@ def extract_daily_wellness(
         quality = _pick_float(row, ("sleepQuality", "sleep_quality", "quality"))
         rhr = _pick_float(
             row,
-            ("restingHeartRate", "resting_hr", "heartRateRest", "heart_rate_rest", "rhr"),
+            ("restingHeartRate", "resting_hr", "heartRateRest", "heart_rate_rest", "rhr", "hr_lowest"),
         )
         entry = {k: v for k, v in {
             "hrv_last": hrv,

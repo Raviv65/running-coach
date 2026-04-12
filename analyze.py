@@ -9,6 +9,25 @@ from typing import Any
 import anthropic
 
 
+ATHLETE_PROFILE = """
+Athlete: Raviv | Location: Israel
+Primary Goal: Run 10 km in 60 minutes (10 km/h)
+Current estimate: 10 km in ~73–77 min — gap of ~13–17 min to close
+Training: 3 runs/week (treadmill) + hiking as cross-training (counts toward load)
+Max HR: ~160 bpm | Aerobic base HR: 130–135 bpm | Threshold HR: 155–160 bpm
+Cardiac drift: typically 6–10 bpm over 40 min (target: reduce below 5 bpm)
+HRV range: 23–40 | Average: ~29–33 | High HRV = green light for quality work
+Optimal TSB zone: -5 to 0 | Avoid stacking intensity when TSB < -10
+Performs best when: HRV >= 30, TSB between -5 and 0, sleep quality high
+Strengths: aerobic base, pacing discipline, consistency, data-driven approach
+Weaknesses: speed endurance, moderate cardiac drift, threshold underdeveloped
+Injury history: none
+Typical session: 10 min warmup @ 6.3 km/h → 40 min @ 7.4 km/h → 10-15 min @ 8.0-8.2 km/h → 5 min cooldown
+Development priorities: extend duration at 8.0-8.5 km/h, tempo runs, intervals at 9-10 km/h, reduce cardiac drift
+Weekly structure: Easy run / Steady run / Quality run / Hiking
+"""
+
+
 def hr_zones(threshold_hr: int) -> dict[str, str]:
     """Zones from anaerobic threshold (e.g. 160 → Z1<128, Z2 128–144, Z3 144–152, Z4 152–160, Z5>160)."""
     th = float(threshold_hr)
@@ -22,11 +41,6 @@ def hr_zones(threshold_hr: int) -> dict[str, str]:
         "Z4": f"{z3_hi}–{int(th)} bpm",
         "Z5": f">{int(th)} bpm",
     }
-
-
-def _pace_10k_60min_kmh() -> float:
-    """10 km in 60 min => 10 km/h."""
-    return 10.0
 
 
 def build_prompt(db: dict[str, Any], today: str) -> str:
@@ -61,22 +75,15 @@ def build_prompt(db: dict[str, Any], today: str) -> str:
     est = m.get("estimated") or {}
     est_note = (
         f"Fields marked estimated (carried forward): {json.dumps(est)}"
-        if any(est.values())
+        if est  # only True entries are stored; non-empty means something was carried forward
         else "No estimated carry-forward for today."
     )
 
-    target_pace = _pace_10k_60min_kmh()
-
     prompt = f"""You are an expert running coach. Produce TODAY's training briefing for {name}.
 
-Athlete profile:
-- Goal: {goal}
-- Watch: {watch}
-- Anaerobic threshold HR: {th} bpm
-- HR zones (from threshold {th}): {ztext}
-  (Z1 <{int(th*0.80)}, Z2 {int(th*0.80)}–{int(th*0.90)}, Z3 {int(th*0.90)}–{int(th*0.95)}, Z4 {int(th*0.95)}–{th}, Z5 >{th})
-- Typical volume: ~3 runs/week, ~8 km per run when healthy
-- Reference race pace for goal 10k/60min: ~{target_pace:.1f} km/h average (use only as context; adjust by feel/HR)
+## ATHLETE PROFILE
+{ATHLETE_PROFILE}
+Watch: {watch} | HR zones: {ztext}
 
 Today's computed metrics ({today}):
 {json.dumps(m, indent=2)}

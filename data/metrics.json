@@ -1,17 +1,2197 @@
 {
-  "metrics": {},
-  "activities": {},
-  "briefings": {},
+  "metrics": {
+    "2025-12-13": {
+      "ctl": 28.32,
+      "atl": 55.48,
+      "tsb": -35.0
+    },
+    "2025-12-14": {
+      "ctl": 27.65,
+      "atl": 48.09,
+      "tsb": -27.16
+    },
+    "2025-12-15": {
+      "ctl": 27.0,
+      "atl": 41.69,
+      "tsb": -20.44
+    },
+    "2025-12-16": {
+      "ctl": 26.37,
+      "atl": 36.14,
+      "tsb": -14.69
+    },
+    "2025-12-17": {
+      "ctl": 25.75,
+      "atl": 31.33,
+      "tsb": -9.78
+    },
+    "2025-12-18": {
+      "ctl": 25.14,
+      "atl": 27.16,
+      "tsb": -5.59
+    },
+    "2025-12-19": {
+      "ctl": 24.55,
+      "atl": 23.54,
+      "tsb": -2.02
+    },
+    "2025-12-20": {
+      "ctl": 23.97,
+      "atl": 20.41,
+      "tsb": 1.0
+    },
+    "2025-12-21": {
+      "ctl": 23.41,
+      "atl": 17.69,
+      "tsb": 3.56
+    },
+    "2025-12-22": {
+      "ctl": 29.0,
+      "atl": 64.0,
+      "tsb": 1.0
+    },
+    "2025-12-23": {
+      "ctl": 28.0,
+      "atl": 55.0,
+      "tsb": -34.0
+    },
+    "2025-12-24": {
+      "ctl": 28.0,
+      "atl": 47.0,
+      "tsb": -26.0,
+      "hrv_last": 35.0
+    },
+    "2025-12-25": {
+      "ctl": 27.0,
+      "atl": 40.0,
+      "tsb": -19.0,
+      "hrv_last": 43.0
+    },
+    "2025-12-26": {
+      "ctl": 27.0,
+      "atl": 34.0,
+      "tsb": -12.0,
+      "hrv_last": 32.0
+    },
+    "2025-12-27": {
+      "ctl": 26.0,
+      "atl": 30.0,
+      "tsb": -7.0,
+      "hrv_last": 31.0
+    },
+    "2025-12-28": {
+      "ctl": 25.0,
+      "atl": 26.0,
+      "tsb": -3.0,
+      "hrv_last": 25.0
+    },
+    "2025-12-29": {
+      "ctl": 25.0,
+      "atl": 21.0,
+      "tsb": -3.0,
+      "hrv_last": 24.0
+    },
+    "2025-12-30": {
+      "ctl": 24.0,
+      "atl": 18.0,
+      "tsb": 3.0,
+      "hrv_last": 22.0
+    },
+    "2025-12-31": {
+      "ctl": 23.0,
+      "atl": 16.0,
+      "tsb": 5.0,
+      "hrv_last": 23.0
+    },
+    "2026-01-01": {
+      "ctl": 23.0,
+      "atl": 13.0,
+      "tsb": 7.0,
+      "hrv_last": 24.0
+    },
+    "2026-01-02": {
+      "ctl": 24.0,
+      "atl": 17.0,
+      "tsb": 3.0,
+      "hrv_last": 22.0
+    },
+    "2026-01-03": {
+      "ctl": 23.0,
+      "atl": 15.0,
+      "tsb": 6.0,
+      "hrv_last": 24.0
+    },
+    "2026-01-04": {
+      "ctl": 22.0,
+      "atl": 13.0,
+      "tsb": 8.0,
+      "hrv_last": 28.0
+    },
+    "2026-01-05": {
+      "ctl": 23.0,
+      "atl": 15.0,
+      "tsb": 6.0,
+      "hrv_last": 29.0
+    },
+    "2026-01-06": {
+      "ctl": 23.0,
+      "atl": 13.0,
+      "tsb": 7.0,
+      "hrv_last": 23.0,
+      "sleep_quality": 0.77
+    },
+    "2026-01-07": {
+      "ctl": 22.0,
+      "atl": 23.0,
+      "tsb": 6.0,
+      "hrv_last": 27.0,
+      "sleep_quality": 1.0
+    },
+    "2026-01-08": {
+      "ctl": 27.0,
+      "atl": 40.0,
+      "tsb": -19.0,
+      "hrv_last": 18.0,
+      "sleep_quality": 0.67
+    },
+    "2026-01-09": {
+      "ctl": 26.0,
+      "atl": 34.0,
+      "tsb": -13.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.75
+    },
+    "2026-01-10": {
+      "ctl": 26.0,
+      "atl": 29.0,
+      "tsb": -7.0,
+      "hrv_last": 31.0,
+      "sleep_quality": 0.9
+    },
+    "2026-01-11": {
+      "ctl": 25.0,
+      "atl": 25.0,
+      "tsb": -3.0,
+      "hrv_last": 32.0,
+      "sleep_quality": 0.85
+    },
+    "2026-01-12": {
+      "ctl": 25.0,
+      "atl": 24.0,
+      "tsb": -2.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 1.0
+    },
+    "2026-01-13": {
+      "ctl": 24.0,
+      "atl": 20.0,
+      "tsb": 1.0,
+      "hrv_last": 30.0,
+      "sleep_quality": 0.99
+    },
+    "2026-01-14": {
+      "ctl": 24.0,
+      "atl": 17.0,
+      "tsb": 1.0,
+      "hrv_last": 37.0,
+      "sleep_quality": 0.95
+    },
+    "2026-01-15": {
+      "ctl": 24.0,
+      "atl": 15.0,
+      "tsb": 6.0,
+      "hrv_last": 58.0,
+      "sleep_quality": 1.0
+    },
+    "2026-01-16": {
+      "ctl": 28.0,
+      "atl": 43.0,
+      "tsb": -21.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.58
+    },
+    "2026-01-17": {
+      "ctl": 28.0,
+      "atl": 37.0,
+      "tsb": -15.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.66
+    },
+    "2026-01-18": {
+      "ctl": 27.0,
+      "atl": 32.0,
+      "tsb": -9.0,
+      "hrv_last": 27.0,
+      "sleep_quality": 0.64
+    },
+    "2026-01-19": {
+      "ctl": 26.0,
+      "atl": 27.0,
+      "tsb": -4.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.64
+    },
+    "2026-01-20": {
+      "ctl": 26.0,
+      "atl": 23.0,
+      "tsb": 0.0,
+      "hrv_last": 23.0,
+      "sleep_quality": 0.64
+    },
+    "2026-01-21": {
+      "ctl": 25.0,
+      "atl": 20.0,
+      "tsb": 2.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.64
+    },
+    "2026-01-22": {
+      "ctl": 24.0,
+      "atl": 17.0,
+      "tsb": 5.0,
+      "hrv_last": 17.0,
+      "sleep_quality": 0.57
+    },
+    "2026-01-23": {
+      "ctl": 24.0,
+      "atl": 14.0,
+      "tsb": 7.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.66
+    },
+    "2026-01-24": {
+      "ctl": 23.0,
+      "atl": 12.0,
+      "tsb": 9.0,
+      "hrv_last": 20.0,
+      "sleep_quality": 0.56
+    },
+    "2026-01-25": {
+      "ctl": 23.0,
+      "atl": 10.0,
+      "tsb": 11.0,
+      "hrv_last": 18.0,
+      "sleep_quality": 0.56
+    },
+    "2026-01-26": {
+      "ctl": 22.0,
+      "atl": 9.0,
+      "tsb": 12.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.59
+    },
+    "2026-01-27": {
+      "ctl": 22.0,
+      "atl": 7.0,
+      "tsb": 13.0
+    },
+    "2026-01-28": {
+      "ctl": 21.0,
+      "atl": 6.0,
+      "tsb": 14.0,
+      "hrv_last": 27.0,
+      "sleep_quality": 0.63
+    },
+    "2026-01-29": {
+      "ctl": 10.02,
+      "atl": 0.22,
+      "tsb": 10.01,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.64
+    },
+    "2026-01-30": {
+      "ctl": 28.0,
+      "atl": 36.0,
+      "tsb": -15.0,
+      "hrv_last": 16.0,
+      "sleep_quality": 0.67
+    },
+    "2026-01-31": {
+      "ctl": 30.0,
+      "atl": 55.0,
+      "tsb": -33.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.81
+    },
+    "2026-02-01": {
+      "ctl": 29.0,
+      "atl": 47.0,
+      "tsb": -29.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.78
+    },
+    "2026-02-02": {
+      "ctl": 33.0,
+      "atl": 64.0,
+      "tsb": -40.0,
+      "hrv_last": 15.0,
+      "sleep_quality": 0.72
+    },
+    "2026-02-03": {
+      "ctl": 32.0,
+      "atl": 54.0,
+      "tsb": -31.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.78
+    },
+    "2026-02-04": {
+      "ctl": 31.0,
+      "atl": 47.0,
+      "tsb": -22.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.85
+    },
+    "2026-02-05": {
+      "ctl": 31.0,
+      "atl": 40.0,
+      "tsb": -15.0,
+      "hrv_last": 17.0,
+      "sleep_quality": 0.7
+    },
+    "2026-02-06": {
+      "ctl": 30.0,
+      "atl": 34.0,
+      "tsb": -9.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.79
+    },
+    "2026-02-07": {
+      "ctl": 9.26,
+      "atl": 5.95,
+      "tsb": 2.62
+    },
+    "2026-02-08": {
+      "ctl": 29.0,
+      "atl": 29.0,
+      "tsb": -3.0,
+      "hrv_last": 18.0,
+      "sleep_quality": 0.75
+    },
+    "2026-02-09": {
+      "ctl": 30.0,
+      "atl": 31.0,
+      "tsb": -6.0,
+      "hrv_last": 20.0,
+      "sleep_quality": 0.77
+    },
+    "2026-02-10": {
+      "ctl": 29.0,
+      "atl": 27.0,
+      "tsb": -1.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.94
+    },
+    "2026-02-11": {
+      "ctl": 9.97,
+      "atl": 9.52,
+      "tsb": -0.76
+    },
+    "2026-02-12": {
+      "ctl": 37.0,
+      "atl": 67.0,
+      "tsb": -40.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.85
+    },
+    "2026-02-13": {
+      "ctl": 36.0,
+      "atl": 57.0,
+      "tsb": -29.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.73
+    },
+    "2026-02-14": {
+      "ctl": 35.0,
+      "atl": 49.0,
+      "tsb": -21.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.93
+    },
+    "2026-02-15": {
+      "ctl": 34.0,
+      "atl": 42.0,
+      "tsb": -13.0,
+      "hrv_last": 28.0,
+      "sleep_quality": 0.97
+    },
+    "2026-02-16": {
+      "ctl": 34.0,
+      "atl": 39.0,
+      "tsb": -10.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.7
+    },
+    "2026-02-17": {
+      "ctl": 33.0,
+      "atl": 33.0,
+      "tsb": -4.0,
+      "hrv_last": 23.0,
+      "sleep_quality": 0.78
+    },
+    "2026-02-18": {
+      "ctl": 32.0,
+      "atl": 28.0,
+      "tsb": 0.0,
+      "hrv_last": 28.0,
+      "sleep_quality": 0.91
+    },
+    "2026-02-19": {
+      "ctl": 39.0,
+      "atl": 64.0,
+      "tsb": -6.0,
+      "hrv_last": 21.0
+    },
+    "2026-02-20": {
+      "ctl": 41.0,
+      "atl": 72.0,
+      "tsb": -25.0,
+      "hrv_last": 18.0
+    },
+    "2026-02-21": {
+      "ctl": 40.0,
+      "atl": 62.0,
+      "tsb": -31.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.71
+    },
+    "2026-02-22": {
+      "ctl": 39.0,
+      "atl": 53.0,
+      "tsb": -22.0,
+      "hrv_last": 28.0,
+      "sleep_quality": 0.83
+    },
+    "2026-02-23": {
+      "ctl": 38.0,
+      "atl": 45.0,
+      "tsb": -14.0,
+      "hrv_last": 30.0,
+      "sleep_quality": 0.9
+    },
+    "2026-02-24": {
+      "ctl": 37.0,
+      "atl": 39.0,
+      "tsb": -7.0,
+      "hrv_last": 38.0,
+      "sleep_quality": 0.99
+    },
+    "2026-02-25": {
+      "ctl": 41.0,
+      "atl": 58.0,
+      "tsb": -25.0,
+      "hrv_last": 36.0,
+      "sleep_quality": 0.88
+    },
+    "2026-02-26": {
+      "ctl": 40.0,
+      "atl": 49.0,
+      "tsb": -17.0,
+      "hrv_last": 39.0,
+      "sleep_quality": 0.94
+    },
+    "2026-02-27": {
+      "ctl": 39.0,
+      "atl": 42.0,
+      "tsb": -9.0,
+      "hrv_last": 55.0,
+      "sleep_quality": 1.0
+    },
+    "2026-02-28": {
+      "ctl": 39.0,
+      "atl": 41.0,
+      "tsb": -8.0,
+      "hrv_last": 57.0,
+      "sleep_quality": 1.0
+    },
+    "2026-03-01": {
+      "ctl": 38.0,
+      "atl": 34.0,
+      "tsb": -1.0,
+      "hrv_last": 56.0,
+      "sleep_quality": 0.99
+    },
+    "2026-03-02": {
+      "ctl": 37.0,
+      "atl": 29.0,
+      "tsb": 3.0,
+      "hrv_last": 57.0,
+      "sleep_quality": 1.0
+    },
+    "2026-03-03": {
+      "ctl": 7.61,
+      "atl": 4.31,
+      "tsb": 2.82,
+      "hrv_last": 24.0
+    },
+    "2026-03-04": {
+      "ctl": 35.0,
+      "atl": 21.0,
+      "tsb": 10.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.72
+    },
+    "2026-03-05": {
+      "ctl": 34.0,
+      "atl": 18.0,
+      "tsb": 13.0,
+      "hrv_last": 22.0,
+      "sleep_quality": 0.67
+    },
+    "2026-03-06": {
+      "ctl": 33.0,
+      "atl": 16.0,
+      "tsb": 15.0,
+      "hrv_last": 22.0,
+      "sleep_quality": 0.66
+    },
+    "2026-03-07": {
+      "ctl": 34.0,
+      "atl": 21.0,
+      "tsb": 10.0,
+      "hrv_last": 27.0,
+      "sleep_quality": 0.71
+    },
+    "2026-03-08": {
+      "ctl": 33.0,
+      "atl": 18.0,
+      "tsb": 13.0,
+      "hrv_last": 29.0,
+      "sleep_quality": 0.68
+    },
+    "2026-03-09": {
+      "ctl": 32.0,
+      "atl": 15.0,
+      "tsb": 15.0,
+      "hrv_last": 41.0,
+      "sleep_quality": 0.82
+    },
+    "2026-03-10": {
+      "ctl": 33.0,
+      "atl": 23.0,
+      "tsb": 7.0,
+      "hrv_last": 39.0,
+      "sleep_quality": 0.91
+    },
+    "2026-03-11": {
+      "ctl": 10.82,
+      "atl": 19.08,
+      "tsb": -10.93,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.72
+    },
+    "2026-03-12": {
+      "ctl": 36.0,
+      "atl": 41.0,
+      "tsb": -10.0,
+      "hrv_last": 22.0,
+      "sleep_quality": 0.69
+    },
+    "2026-03-13": {
+      "ctl": 10.31,
+      "atl": 14.34,
+      "tsb": -5.98
+    },
+    "2026-03-14": {
+      "ctl": 10.07,
+      "atl": 12.43,
+      "tsb": -4.02
+    },
+    "2026-03-15": {
+      "ctl": 9.83,
+      "atl": 10.77,
+      "tsb": -2.36
+    },
+    "2026-03-16": {
+      "ctl": 33.0,
+      "atl": 22.0,
+      "tsb": 8.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 0.96
+    },
+    "2026-03-17": {
+      "ctl": 33.0,
+      "atl": 26.0,
+      "tsb": 4.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.73
+    },
+    "2026-03-18": {
+      "ctl": 33.0,
+      "atl": 22.0,
+      "tsb": 7.0,
+      "hrv_last": 23.0,
+      "sleep_quality": 0.75
+    },
+    "2026-03-19": {
+      "ctl": 13.61,
+      "atl": 27.76,
+      "tsb": -18.08,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.69
+    },
+    "2026-03-20": {
+      "ctl": 36.0,
+      "atl": 39.0,
+      "tsb": -9.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.78
+    },
+    "2026-03-21": {
+      "ctl": 37.0,
+      "atl": 42.0,
+      "tsb": -12.0,
+      "hrv_last": 25.0,
+      "sleep_quality": 0.86
+    },
+    "2026-03-22": {
+      "ctl": 36.0,
+      "atl": 36.0,
+      "tsb": -5.0,
+      "hrv_last": 27.0,
+      "sleep_quality": 0.79
+    },
+    "2026-03-23": {
+      "ctl": 35.0,
+      "atl": 31.0,
+      "tsb": 0.0,
+      "hrv_last": 20.0,
+      "sleep_quality": 0.71
+    },
+    "2026-03-24": {
+      "ctl": 16.59,
+      "atl": 32.92,
+      "tsb": -20.98
+    },
+    "2026-03-25": {
+      "ctl": 41.0,
+      "atl": 64.0,
+      "tsb": -32.0,
+      "hrv_last": 23.0,
+      "sleep_quality": 0.76
+    },
+    "2026-03-26": {
+      "ctl": 40.0,
+      "atl": 55.0,
+      "tsb": -22.0,
+      "hrv_last": 27.0
+    },
+    "2026-03-27": {
+      "ctl": 39.0,
+      "atl": 47.0,
+      "tsb": -14.0,
+      "hrv_last": 39.0
+    },
+    "2026-03-28": {
+      "ctl": 38.0,
+      "atl": 40.0,
+      "tsb": -7.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 1.0
+    },
+    "2026-03-29": {
+      "ctl": 37.0,
+      "atl": 34.0,
+      "tsb": -1.0,
+      "hrv_last": 41.0,
+      "sleep_quality": 1.0
+    },
+    "2026-03-30": {
+      "ctl": 36.0,
+      "atl": 29.0,
+      "tsb": 3.0,
+      "hrv_last": 56.0,
+      "sleep_quality": 1.0
+    },
+    "2026-03-31": {
+      "ctl": 38.0,
+      "atl": 37.0,
+      "tsb": -4.0,
+      "hrv_last": 19.0,
+      "sleep_quality": 0.62
+    },
+    "2026-04-01": {
+      "ctl": 37.0,
+      "atl": 32.0,
+      "tsb": 0.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.65
+    },
+    "2026-04-02": {
+      "ctl": 16.59,
+      "atl": 21.76,
+      "tsb": -8.12
+    },
+    "2026-04-03": {
+      "ctl": 35.0,
+      "atl": 23.0,
+      "tsb": 8.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 0.85
+    },
+    "2026-04-04": {
+      "ctl": 37.0,
+      "atl": 31.0,
+      "tsb": 0.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 0.86
+    },
+    "2026-04-05": {
+      "ctl": 36.0,
+      "atl": 27.0,
+      "tsb": 5.0,
+      "hrv_last": 24.0,
+      "sleep_quality": 0.71
+    },
+    "2026-04-06": {
+      "ctl": 39.0,
+      "atl": 40.0,
+      "tsb": -7.0,
+      "hrv_last": 21.0
+    },
+    "2026-04-07": {
+      "ctl": 37.0,
+      "atl": 34.0,
+      "tsb": -2.0,
+      "hrv_last": 28.0,
+      "sleep_quality": 0.8,
+      "trimp": 130.0
+    },
+    "2026-04-08": {
+      "ctl": 39.0,
+      "atl": 45.0,
+      "tsb": -12.0,
+      "hrv_last": 34.0
+    },
+    "2026-04-09": {
+      "ctl": 38.0,
+      "atl": 38.0,
+      "tsb": -5.0,
+      "hrv_last": 21.0,
+      "sleep_quality": 0.71,
+      "trimp": 129.0
+    },
+    "2026-04-10": {
+      "ctl": 40.0,
+      "atl": 44.0,
+      "tsb": -10.0,
+      "hrv_last": 29.0,
+      "sleep_quality": 0.79,
+      "trimp": 101.0
+    },
+    "2026-04-11": {
+      "ctl": 41.0,
+      "atl": 46.0,
+      "tsb": -13.0,
+      "estimated": {
+        "hrv_last": true,
+        "sleep_quality": true
+      },
+      "hrv_7d_avg": 26.14,
+      "hrv_30d_avg": 29.2,
+      "ramp_rate": null,
+      "ac_ratio": null,
+      "recovery_score": 25.5,
+      "hrv_last": 26.0,
+      "sleep_quality": 0.74
+    },
+    "2026-04-12": {
+      "ctl": 40.04,
+      "atl": 39.88,
+      "tsb": -5.0,
+      "hrv_last": 40.0,
+      "sleep_quality": 93.0,
+      "estimated": {},
+      "hrv_7d_avg": 28.43,
+      "hrv_30d_avg": 29.62,
+      "ramp_rate": null,
+      "ac_ratio": 0.996,
+      "recovery_score": 79.9,
+      "sleep_duration_min": 329.0,
+      "resting_hr": 54.0
+    }
+  },
+  "activities": {
+    "2025-09-02": [
+      {
+        "id": "173372265",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-02T18:09:39+03:00",
+        "date": "2025-09-02",
+        "trimp": 175.0,
+        "tss": null,
+        "distance_km": 7.0,
+        "duration_min": 44.733333333333334,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-05": [
+      {
+        "id": "173372260",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-05T16:19:42+03:00",
+        "date": "2025-09-05",
+        "trimp": 74.0,
+        "tss": null,
+        "distance_km": 4.0,
+        "duration_min": 24.933333333333334,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-07": [
+      {
+        "id": "173372267",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-07T17:03:11+03:00",
+        "date": "2025-09-07",
+        "trimp": 158.0,
+        "tss": null,
+        "distance_km": 7.0,
+        "duration_min": 45.05,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-10": [
+      {
+        "id": "173372256",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-10T19:02:53+03:00",
+        "date": "2025-09-10",
+        "trimp": 127.0,
+        "tss": null,
+        "distance_km": 6.0,
+        "duration_min": 38.13333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-16": [
+      {
+        "id": "173372248",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-16T18:57:23+03:00",
+        "date": "2025-09-16",
+        "trimp": 33.0,
+        "tss": null,
+        "distance_km": 3.29,
+        "duration_min": 43.483333333333334,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-17": [
+      {
+        "id": "173372249",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-17T18:23:11+03:00",
+        "date": "2025-09-17",
+        "trimp": 35.0,
+        "tss": null,
+        "distance_km": 3.38,
+        "duration_min": 33.7,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-25": [
+      {
+        "id": "173372243",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-25T18:06:53+03:00",
+        "date": "2025-09-25",
+        "trimp": 147.0,
+        "tss": null,
+        "distance_km": 7.0,
+        "duration_min": 46.68333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      },
+      {
+        "id": "173372242",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-25T18:02:05+03:00",
+        "date": "2025-09-25",
+        "trimp": 0.0,
+        "tss": null,
+        "distance_km": 0.08,
+        "duration_min": 66.0,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-27": [
+      {
+        "id": "173372241",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-27T20:31:24+03:00",
+        "date": "2025-09-27",
+        "trimp": 18.0,
+        "tss": null,
+        "distance_km": 3.38,
+        "duration_min": 40.71666666666667,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-09-29": [
+      {
+        "id": "173372236",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-09-29T10:55:53+03:00",
+        "date": "2025-09-29",
+        "trimp": 176.0,
+        "tss": null,
+        "distance_km": 9.0,
+        "duration_min": 60.0,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-10-01": [
+      {
+        "id": "173372230",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-10-01T08:54:13+03:00",
+        "date": "2025-10-01",
+        "trimp": 82.0,
+        "tss": null,
+        "distance_km": 5.19,
+        "duration_min": 29.0,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-10-15": [
+      {
+        "id": "173372222",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-10-15T17:47:21+03:00",
+        "date": "2025-10-15",
+        "trimp": 53.0,
+        "tss": null,
+        "distance_km": 3.74,
+        "duration_min": 38.233333333333334,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-11-23": [
+      {
+        "id": "173372217",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-11-23T16:41:27+02:00",
+        "date": "2025-11-23",
+        "trimp": 94.0,
+        "tss": null,
+        "distance_km": 5.22,
+        "duration_min": 52.833333333333336,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-12-01": [
+      {
+        "id": "173372208",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-12-01T19:35:25+02:00",
+        "date": "2025-12-01",
+        "trimp": 114.0,
+        "tss": null,
+        "distance_km": 6.0,
+        "duration_min": 50.166666666666664,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-12-02": [
+      {
+        "id": "173372205",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-12-02T20:21:50+02:00",
+        "date": "2025-12-02",
+        "trimp": 45.0,
+        "tss": null,
+        "distance_km": 3.0,
+        "duration_min": 26.516666666666666,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-12-05": [
+      {
+        "id": "173372201",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-12-05T13:05:06+02:00",
+        "date": "2025-12-05",
+        "trimp": 89.0,
+        "tss": null,
+        "distance_km": 5.0,
+        "duration_min": 39.71666666666667,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2025-12-08": [
+      {
+        "id": "173372200",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2025-12-08T12:51:35+02:00",
+        "date": "2025-12-08",
+        "trimp": 100.0,
+        "tss": null,
+        "distance_km": 5.0,
+        "duration_min": 37.516666666666666,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-01-01": [
+      {
+        "id": "173372186",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-01-01T17:20:44+02:00",
+        "date": "2026-01-01",
+        "trimp": 64.0,
+        "tss": null,
+        "distance_km": 3.25,
+        "duration_min": 47.75,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-02-06": [
+      {
+        "id": "173372180",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-02-06T16:06:07+02:00",
+        "date": "2026-02-06",
+        "trimp": 51.0,
+        "tss": null,
+        "distance_km": 3.01,
+        "duration_min": 32.18333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-02-08": [
+      {
+        "id": "173372177",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-02-08T20:03:12+02:00",
+        "date": "2026-02-08",
+        "trimp": 71.0,
+        "tss": null,
+        "distance_km": 5.5,
+        "duration_min": 53.45,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-02-15": [
+      {
+        "id": "173372169",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-02-15T20:04:35+02:00",
+        "date": "2026-02-15",
+        "trimp": 28.0,
+        "tss": null,
+        "distance_km": 3.0,
+        "duration_min": 25.816666666666666,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-02-27": [
+      {
+        "id": "173372172",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-02-27T13:28:44+02:00",
+        "date": "2026-02-27",
+        "trimp": 45.0,
+        "tss": null,
+        "distance_km": 3.65,
+        "duration_min": 30.033333333333335,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-06": [
+      {
+        "id": "173372146",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-06T11:06:22+02:00",
+        "date": "2026-03-06",
+        "trimp": 89.0,
+        "tss": null,
+        "distance_km": 5.0,
+        "duration_min": 41.36666666666667,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-09": [
+      {
+        "id": "173372148",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-09T11:06:37+02:00",
+        "date": "2026-03-09",
+        "trimp": 110.0,
+        "tss": null,
+        "distance_km": 5.41,
+        "duration_min": 43.38333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      },
+      {
+        "id": "173372145",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-09T11:00:40+02:00",
+        "date": "2026-03-09",
+        "trimp": 9.0,
+        "tss": null,
+        "distance_km": 0.49,
+        "duration_min": 248.0,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-16": [
+      {
+        "id": "173372143",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-16T14:34:45+02:00",
+        "date": "2026-03-16",
+        "trimp": 77.0,
+        "tss": null,
+        "distance_km": 4.5,
+        "duration_min": 39.65,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-18": [
+      {
+        "id": "173372142",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-18T14:33:08+02:00",
+        "date": "2026-03-18",
+        "trimp": 130.0,
+        "tss": null,
+        "distance_km": 5.75,
+        "duration_min": 50.03333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-20": [
+      {
+        "id": "173372138",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-20T11:03:57+02:00",
+        "date": "2026-03-20",
+        "trimp": 102.0,
+        "tss": null,
+        "distance_km": 5.83,
+        "duration_min": 55.016666666666666,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-23": [
+      {
+        "id": "173372136",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-23T10:56:44+02:00",
+        "date": "2026-03-23",
+        "trimp": 101.0,
+        "tss": null,
+        "distance_km": 5.88,
+        "duration_min": 55.15,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-03-30": [
+      {
+        "id": "173372134",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-03-30T10:41:38+03:00",
+        "date": "2026-03-30",
+        "trimp": 146.0,
+        "tss": null,
+        "distance_km": 6.4,
+        "duration_min": 61.21666666666667,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-04-03": [
+      {
+        "id": "173372132",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-04-03T08:51:18+03:00",
+        "date": "2026-04-03",
+        "trimp": 132.0,
+        "tss": null,
+        "distance_km": 6.22,
+        "duration_min": 60.0,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-04-07": [
+      {
+        "id": "173372129",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-04-07T08:40:07+03:00",
+        "date": "2026-04-07",
+        "trimp": 130.0,
+        "tss": null,
+        "distance_km": 8.0,
+        "duration_min": 67.08333333333333,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-04-09": [
+      {
+        "id": "173438291",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-04-09T11:03:24+03:00",
+        "date": "2026-04-09",
+        "trimp": 129.0,
+        "tss": null,
+        "distance_km": 8.0,
+        "duration_min": 66.76666666666667,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ],
+    "2026-04-10": [
+      {
+        "id": "173615170",
+        "title": "Easy run",
+        "sport": "running",
+        "started_at": "2026-04-10T15:20:05+03:00",
+        "date": "2026-04-10",
+        "trimp": 101.0,
+        "tss": null,
+        "distance_km": 6.5,
+        "duration_min": 56.166666666666664,
+        "raw_keys": [
+          "id",
+          "sport",
+          "type",
+          "sport_id",
+          "type_id",
+          "date_time",
+          "timezone_offset",
+          "title",
+          "note",
+          "device_id",
+          "source",
+          "created_at",
+          "is_track",
+          "distance",
+          "duration",
+          "elapsed_time",
+          "elevation_up",
+          "elevation_down",
+          "elevation_up_file",
+          "elevation_down_file"
+        ]
+      }
+    ]
+  },
+  "briefings": {
+    "2026-04-11": {
+      "markdown": "# Today's Training Briefing — Raviv | Saturday, 11 April 2026\n\n---\n\n## Traffic Lights\n\n- **Load:** 🔴 Red — ATL (46) has been climbing steadily above CTL (41) all week; accumulated fatigue is meaningfully elevated.\n- **Freshness:** 🔴 Red — TSB is −13 and has been trending more negative for 5 consecutive days (from −5 → −13); you are in a clear fatigue hole.\n- **Recovery:** 🔴 Red — Recovery score of 25.5 is low; HRV last reading (26) is below both the 7-day avg (26.1) and well below the 30-day avg (29.2); sleep data is unavailable so uncertainty is high, but the HRV trend alone warrants caution.\n\n---\n\n## Limiting Factor\n\nAccumulated fatigue (ATL > CTL, TSB −13, HRV suppressed below 30-day baseline) is the single factor limiting productive training today — adding intensity or volume now risks deepening the hole rather than building fitness.\n\n---\n\n## Conclusion\n\nAll three key metrics are in the red simultaneously, which is a meaningful signal to treat today as a recovery-priority session rather than a development one. Your HRV has been volatile over the past 7 days (range 21–34), which suggests your body is not in a stable, well-adapted state. A short, genuinely easy run will maintain consistency and aerobic stimulus without compounding fatigue. If legs feel heavy or HR runs high relative to pace within the first 10 minutes, cut the session short without hesitation.\n\n---\n\n## Option A (Recommended) — Easy Aerobic Flush Run\n\n**Total volume: ~5–6 km | Duration: ~35–40 min**\n\n| Phase | Distance | Pace Target | HR Target |\n|---|---|---|---|\n| **Warm-up** | 1.0 km | 7.5–8.0 km/h (very easy walk/jog) | Z1 < 128 bpm |\n| **Main set** | 3.5–4.5 km | 8.0–9.0 km/h (conversational) | Z2: 128–144 bpm — **do not allow drift into Z3** |\n| **Cool-down** | 0.5 km | 6.5–7.5 km/h (walk or very slow jog) | Z1 < 128 bpm |\n\n**Key instructions:**\n- Start the Suunto in HR-lock mode and treat the HR ceiling of **144 bpm as a hard cap** — slow down or walk if you approach it.\n- If HR creeps above 144 bpm at any point in the main set, reduce pace to 7.5 km/h immediately.\n- No surges, no tempo efforts, no hills if avoidable.\n- This is a **feel-good, flush-the-legs** run — perceived effort should feel almost embarrassingly easy (RPE 3–4/10).\n\n---\n\n## Option B (Fallback) — Rest or Walk\n\n**If you wake up feeling flat, sleep-deprived, or HR is elevated at rest:**\n\n- 20–30 min brisk walk at 5.5–6.5 km/h, staying firmly in **Z1 (< 128 bpm)**.\n- Zero running. This is a fully valid training decision given today's metrics — skipping a run when TSB is −13 is not weakness, it is smart periodisation.\n- Light mobility or stretching is fine.\n\n---\n\n## What to Avoid\n\n- ❌ Any running in Z3 (144–152 bpm) or above today\n- ❌ Tempo efforts, fartlek, or pace pickups \"just to see how legs feel\"\n- ❌ Extending the run beyond 6 km to \"make up\" for fatigue days — this deepens the hole\n- ❌ Using goal race pace (10 km/h) as a benchmark today — it is not appropriate given TSB −13\n- ❌ Ignoring HR and running by feel alone — fatigue often masks effort perception, causing HR to run higher than it feels\n- ❌ Consecutive hard or moderate days until TSB returns to at least −5 or above\n\n---\n\n## Tomorrow Outlook\n\nIf today's session is genuinely easy (Option A) or you choose Option B, you should see a small positive TSB shift by tomorrow. Aim for a full rest day on Sunday if possible — letting ATL drop while CTL holds will bring TSB back toward neutral (around −8 to −10). By early next week (Monday/Tuesday), if HRV stabilises at or above 28–29 (closer to your 30-day average) and legs feel lighter, you will be well-positioned for a moderate Z2/Z3 quality session of 7–8 km. Do not schedule any structured quality work (tempo, threshold) until TSB is above −5.",
+      "html": "<h1>Today's Training Briefing — Raviv | Saturday, 11 April 2026</h1>\n<hr />\n<h2>Traffic Lights</h2>\n<ul>\n<li><strong>Load:</strong> 🔴 Red — ATL (46) has been climbing steadily above CTL (41) all week; accumulated fatigue is meaningfully elevated.</li>\n<li><strong>Freshness:</strong> 🔴 Red — TSB is −13 and has been trending more negative for 5 consecutive days (from −5 → −13); you are in a clear fatigue hole.</li>\n<li><strong>Recovery:</strong> 🔴 Red — Recovery score of 25.5 is low; HRV last reading (26) is below both the 7-day avg (26.1) and well below the 30-day avg (29.2); sleep data is unavailable so uncertainty is high, but the HRV trend alone warrants caution.</li>\n</ul>\n<hr />\n<h2>Limiting Factor</h2>\n<p>Accumulated fatigue (ATL &gt; CTL, TSB −13, HRV suppressed below 30-day baseline) is the single factor limiting productive training today — adding intensity or volume now risks deepening the hole rather than building fitness.</p>\n<hr />\n<h2>Conclusion</h2>\n<p>All three key metrics are in the red simultaneously, which is a meaningful signal to treat today as a recovery-priority session rather than a development one. Your HRV has been volatile over the past 7 days (range 21–34), which suggests your body is not in a stable, well-adapted state. A short, genuinely easy run will maintain consistency and aerobic stimulus without compounding fatigue. If legs feel heavy or HR runs high relative to pace within the first 10 minutes, cut the session short without hesitation.</p>\n<hr />\n<h2>Option A (Recommended) — Easy Aerobic Flush Run</h2>\n<p><strong>Total volume: ~5–6 km | Duration: ~35–40 min</strong></p>\n<table>\n<thead>\n<tr>\n<th>Phase</th>\n<th>Distance</th>\n<th>Pace Target</th>\n<th>HR Target</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><strong>Warm-up</strong></td>\n<td>1.0 km</td>\n<td>7.5–8.0 km/h (very easy walk/jog)</td>\n<td>Z1 &lt; 128 bpm</td>\n</tr>\n<tr>\n<td><strong>Main set</strong></td>\n<td>3.5–4.5 km</td>\n<td>8.0–9.0 km/h (conversational)</td>\n<td>Z2: 128–144 bpm — <strong>do not allow drift into Z3</strong></td>\n</tr>\n<tr>\n<td><strong>Cool-down</strong></td>\n<td>0.5 km</td>\n<td>6.5–7.5 km/h (walk or very slow jog)</td>\n<td>Z1 &lt; 128 bpm</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Key instructions:</strong><br />\n- Start the Suunto in HR-lock mode and treat the HR ceiling of <strong>144 bpm as a hard cap</strong> — slow down or walk if you approach it.<br />\n- If HR creeps above 144 bpm at any point in the main set, reduce pace to 7.5 km/h immediately.<br />\n- No surges, no tempo efforts, no hills if avoidable.<br />\n- This is a <strong>feel-good, flush-the-legs</strong> run — perceived effort should feel almost embarrassingly easy (RPE 3–4/10).</p>\n<hr />\n<h2>Option B (Fallback) — Rest or Walk</h2>\n<p><strong>If you wake up feeling flat, sleep-deprived, or HR is elevated at rest:</strong></p>\n<ul>\n<li>20–30 min brisk walk at 5.5–6.5 km/h, staying firmly in <strong>Z1 (&lt; 128 bpm)</strong>.</li>\n<li>Zero running. This is a fully valid training decision given today's metrics — skipping a run when TSB is −13 is not weakness, it is smart periodisation.</li>\n<li>Light mobility or stretching is fine.</li>\n</ul>\n<hr />\n<h2>What to Avoid</h2>\n<ul>\n<li>❌ Any running in Z3 (144–152 bpm) or above today</li>\n<li>❌ Tempo efforts, fartlek, or pace pickups \"just to see how legs feel\"</li>\n<li>❌ Extending the run beyond 6 km to \"make up\" for fatigue days — this deepens the hole</li>\n<li>❌ Using goal race pace (10 km/h) as a benchmark today — it is not appropriate given TSB −13</li>\n<li>❌ Ignoring HR and running by feel alone — fatigue often masks effort perception, causing HR to run higher than it feels</li>\n<li>❌ Consecutive hard or moderate days until TSB returns to at least −5 or above</li>\n</ul>\n<hr />\n<h2>Tomorrow Outlook</h2>\n<p>If today's session is genuinely easy (Option A) or you choose Option B, you should see a small positive TSB shift by tomorrow. Aim for a full rest day on Sunday if possible — letting ATL drop while CTL holds will bring TSB back toward neutral (around −8 to −10). By early next week (Monday/Tuesday), if HRV stabilises at or above 28–29 (closer to your 30-day average) and legs feel lighter, you will be well-positioned for a moderate Z2/Z3 quality session of 7–8 km. Do not schedule any structured quality work (tempo, threshold) until TSB is above −5.</p>",
+      "model": "claude-sonnet-4-6",
+      "created_utc": "2026-04-11T22:11:30.579876+00:00"
+    },
+    "2026-04-12": {
+      "markdown": "# Training Briefing — Raviv | Sunday 13 April 2026\n\n---\n\n## Traffic Lights\n\n- **Load / Freshness:** 🟢 **Green** — TSB is exactly –5.0, sitting right at the upper edge of your optimal window (–5 to 0); CTL is stable at 40 and ATL has dropped from a recent peak of 46 back to ~40, confirming genuine recovery.\n- **Recovery:** 🟢 **Green** — Today's HRV of 40 is the highest single reading in the past 30 days and well above your 7-day average of 28.4 and 30-day average of 29.6; resting HR at 54 bpm is healthy.\n- **Sleep:** 🟠 **Amber** — Only one sleep data point exists (329 min = ~5.5 h tonight), which is shorter than ideal. HRV contradicts fatigue, but keep early effort conservative and monitor how you feel in the first 10 minutes.\n\n---\n\n## Limiting Factor\n\nSpeed endurance and underdeveloped threshold capacity remain the primary gap between your current ~73–77 min 10 km and your 60-minute goal — today's exceptional HRV makes this the right day to push into that zone.\n\n---\n\n## Conclusion\n\nYour readiness today is about as good as it gets: HRV at 40 (a 30-day high), TSB squarely in your optimal band, and ATL trending back down after a congested block. The only caveat is the single short-sleep data point, so start conservatively and let the first 10–12 minutes of your main set confirm you truly feel sharp before committing to the faster segments. This is a **Quality Run day** — the goal is meaningful time at 9.0–9.5 km/h, building the speed-endurance you need most. Do not waste this green-light combination on an easy shuffle.\n\n---\n\n## Option A (Recommended) — Threshold Intervals / Speed-Endurance Run\n\n### Structure\n\n| Phase | Duration | Pace (km/h) | Target HR Zone |\n|---|---|---|---|\n| **Warm-up** | 10 min | 6.3 km/h | Z1 (<128 bpm) |\n| **Build** | 5 min | 7.8 km/h | Low Z2 (128–133 bpm) |\n| **Interval Block** | 4 × 5 min ON / 2 min OFF | ON: 9.0–9.5 km/h / OFF: 7.0 km/h | ON: Z4 (152–160 bpm) / OFF: Z2 recovery |\n| **Steady finish** | 10 min | 8.2 km/h | Z2–Z3 (135–148 bpm) |\n| **Cool-down** | 5 min | 6.0 km/h | Z1 (<128 bpm) |\n\n**Total time:** ~52 min | **Estimated distance:** ~7.5–8.0 km\n\n### Key execution notes\n- **First interval:** treat it as a calibration lap — if HR rockets above 160 within 2 minutes, dial back to 8.7 km/h and hold Z3/Z4 border instead.\n- **Rest intervals at 7.0 km/h** (not standing still) — keeping moving preserves cardiac efficiency and mirrors race conditions.\n- **Cardiac drift check:** note your HR at the start vs. end of each ON interval. You're targeting <5 bpm of unexplained drift across the block.\n- The **10-min steady finish at 8.2 km/h** teaches your body to maintain pace on pre-fatigued legs — critical for your 10 km goal.\n- If you feel strong after interval 4, you may add a 5th rep, but do not sacrifice the cool-down.\n\n---\n\n## Option B (Fallback) — Aerobic Tempo Run\n\n*Use this if you feel flat in the warm-up or HR is elevated >5 bpm above expected in the first 10 minutes.*\n\n| Phase | Duration | Pace (km/h) | Target HR Zone |\n|---|---|---|---|\n| **Warm-up** | 10 min | 6.3 km/h | Z1 (<128 bpm) |\n| **Steady aerobic** | 35 min | 8.0–8.3 km/h | Z2–Z3 (133–148 bpm) |\n| **Tempo push** | 10 min | 8.8–9.0 km/h | Z3–Z4 (148–158 bpm) |\n| **Cool-down** | 5 min | 6.0 km/h | Z1 (<128 bpm) |\n\n**Total time:** ~60 min | **Estimated distance:** ~7.8–8.2 km\n\nStill a productive session — extends your time near 9.0 km/h without the full interval stress.\n\n---\n\n## What to Avoid\n\n- ❌ **Running the entire session in Z2 at 7.4–7.8 km/h** — wasting a rare green-light day on easy effort won't close your 13–17 min gap\n- ❌ **Starting intervals too fast (>9.5 km/h)** — HR will spike into Z5 and you'll blow up before completing the block\n- ❌ **Skipping the build phase** — jumping from warm-up directly to 9+ km/h with an unprepared cardiovascular system risks HR overshoot\n- ❌ **Letting TSB drop below –10 this week** — you've been at –13 twice recently; protect freshness for your next quality session\n- ❌ **Ignoring cardiac drift signals** — if HR during the steady finish exceeds 150 bpm at 8.2 km/h, stop there; don't add a 5th interval\n\n---\n\n## Tomorrow Outlook\n\nTomorrow should be a **full rest day or light cross-training only** (easy hiking, 45–60 min, flat terrain). Today's interval block will push ATL upward, likely moving TSB toward –8 to –10 by tomorrow — within tolerance, but you'll need the recovery buffer before your next session mid-week. If HRV tomorrow drops below 25 or resting HR rises above 58 bpm, treat the day as complete rest. Sleep is the single biggest lever you can pull right now: the 5.5-hour reading tonight is a flag — aim for 7–8 hours to keep HRV elevated and support the adaptation from today's quality work.",
+      "html": "<h1>Training Briefing — Raviv | Sunday 13 April 2026</h1>\n<hr />\n<h2>Traffic Lights</h2>\n<ul>\n<li><strong>Load / Freshness:</strong> 🟢 <strong>Green</strong> — TSB is exactly –5.0, sitting right at the upper edge of your optimal window (–5 to 0); CTL is stable at 40 and ATL has dropped from a recent peak of 46 back to ~40, confirming genuine recovery.</li>\n<li><strong>Recovery:</strong> 🟢 <strong>Green</strong> — Today's HRV of 40 is the highest single reading in the past 30 days and well above your 7-day average of 28.4 and 30-day average of 29.6; resting HR at 54 bpm is healthy.</li>\n<li><strong>Sleep:</strong> 🟠 <strong>Amber</strong> — Only one sleep data point exists (329 min = ~5.5 h tonight), which is shorter than ideal. HRV contradicts fatigue, but keep early effort conservative and monitor how you feel in the first 10 minutes.</li>\n</ul>\n<hr />\n<h2>Limiting Factor</h2>\n<p>Speed endurance and underdeveloped threshold capacity remain the primary gap between your current ~73–77 min 10 km and your 60-minute goal — today's exceptional HRV makes this the right day to push into that zone.</p>\n<hr />\n<h2>Conclusion</h2>\n<p>Your readiness today is about as good as it gets: HRV at 40 (a 30-day high), TSB squarely in your optimal band, and ATL trending back down after a congested block. The only caveat is the single short-sleep data point, so start conservatively and let the first 10–12 minutes of your main set confirm you truly feel sharp before committing to the faster segments. This is a <strong>Quality Run day</strong> — the goal is meaningful time at 9.0–9.5 km/h, building the speed-endurance you need most. Do not waste this green-light combination on an easy shuffle.</p>\n<hr />\n<h2>Option A (Recommended) — Threshold Intervals / Speed-Endurance Run</h2>\n<h3>Structure</h3>\n<table>\n<thead>\n<tr>\n<th>Phase</th>\n<th>Duration</th>\n<th>Pace (km/h)</th>\n<th>Target HR Zone</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><strong>Warm-up</strong></td>\n<td>10 min</td>\n<td>6.3 km/h</td>\n<td>Z1 (&lt;128 bpm)</td>\n</tr>\n<tr>\n<td><strong>Build</strong></td>\n<td>5 min</td>\n<td>7.8 km/h</td>\n<td>Low Z2 (128–133 bpm)</td>\n</tr>\n<tr>\n<td><strong>Interval Block</strong></td>\n<td>4 × 5 min ON / 2 min OFF</td>\n<td>ON: 9.0–9.5 km/h / OFF: 7.0 km/h</td>\n<td>ON: Z4 (152–160 bpm) / OFF: Z2 recovery</td>\n</tr>\n<tr>\n<td><strong>Steady finish</strong></td>\n<td>10 min</td>\n<td>8.2 km/h</td>\n<td>Z2–Z3 (135–148 bpm)</td>\n</tr>\n<tr>\n<td><strong>Cool-down</strong></td>\n<td>5 min</td>\n<td>6.0 km/h</td>\n<td>Z1 (&lt;128 bpm)</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Total time:</strong> ~52 min | <strong>Estimated distance:</strong> ~7.5–8.0 km</p>\n<h3>Key execution notes</h3>\n<ul>\n<li><strong>First interval:</strong> treat it as a calibration lap — if HR rockets above 160 within 2 minutes, dial back to 8.7 km/h and hold Z3/Z4 border instead.</li>\n<li><strong>Rest intervals at 7.0 km/h</strong> (not standing still) — keeping moving preserves cardiac efficiency and mirrors race conditions.</li>\n<li><strong>Cardiac drift check:</strong> note your HR at the start vs. end of each ON interval. You're targeting &lt;5 bpm of unexplained drift across the block.</li>\n<li>The <strong>10-min steady finish at 8.2 km/h</strong> teaches your body to maintain pace on pre-fatigued legs — critical for your 10 km goal.</li>\n<li>If you feel strong after interval 4, you may add a 5th rep, but do not sacrifice the cool-down.</li>\n</ul>\n<hr />\n<h2>Option B (Fallback) — Aerobic Tempo Run</h2>\n<p><em>Use this if you feel flat in the warm-up or HR is elevated &gt;5 bpm above expected in the first 10 minutes.</em></p>\n<table>\n<thead>\n<tr>\n<th>Phase</th>\n<th>Duration</th>\n<th>Pace (km/h)</th>\n<th>Target HR Zone</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><strong>Warm-up</strong></td>\n<td>10 min</td>\n<td>6.3 km/h</td>\n<td>Z1 (&lt;128 bpm)</td>\n</tr>\n<tr>\n<td><strong>Steady aerobic</strong></td>\n<td>35 min</td>\n<td>8.0–8.3 km/h</td>\n<td>Z2–Z3 (133–148 bpm)</td>\n</tr>\n<tr>\n<td><strong>Tempo push</strong></td>\n<td>10 min</td>\n<td>8.8–9.0 km/h</td>\n<td>Z3–Z4 (148–158 bpm)</td>\n</tr>\n<tr>\n<td><strong>Cool-down</strong></td>\n<td>5 min</td>\n<td>6.0 km/h</td>\n<td>Z1 (&lt;128 bpm)</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Total time:</strong> ~60 min | <strong>Estimated distance:</strong> ~7.8–8.2 km</p>\n<p>Still a productive session — extends your time near 9.0 km/h without the full interval stress.</p>\n<hr />\n<h2>What to Avoid</h2>\n<ul>\n<li>❌ <strong>Running the entire session in Z2 at 7.4–7.8 km/h</strong> — wasting a rare green-light day on easy effort won't close your 13–17 min gap</li>\n<li>❌ <strong>Starting intervals too fast (&gt;9.5 km/h)</strong> — HR will spike into Z5 and you'll blow up before completing the block</li>\n<li>❌ <strong>Skipping the build phase</strong> — jumping from warm-up directly to 9+ km/h with an unprepared cardiovascular system risks HR overshoot</li>\n<li>❌ <strong>Letting TSB drop below –10 this week</strong> — you've been at –13 twice recently; protect freshness for your next quality session</li>\n<li>❌ <strong>Ignoring cardiac drift signals</strong> — if HR during the steady finish exceeds 150 bpm at 8.2 km/h, stop there; don't add a 5th interval</li>\n</ul>\n<hr />\n<h2>Tomorrow Outlook</h2>\n<p>Tomorrow should be a <strong>full rest day or light cross-training only</strong> (easy hiking, 45–60 min, flat terrain). Today's interval block will push ATL upward, likely moving TSB toward –8 to –10 by tomorrow — within tolerance, but you'll need the recovery buffer before your next session mid-week. If HRV tomorrow drops below 25 or resting HR rises above 58 bpm, treat the day as complete rest. Sleep is the single biggest lever you can pull right now: the 5.5-hour reading tonight is a flag — aim for 7–8 hours to keep HRV elevated and support the adaptation from today's quality work.</p>",
+      "model": "claude-sonnet-4-6",
+      "created_utc": "2026-04-12T10:30:39.796282+00:00"
+    }
+  },
   "meta": {
-    "last_sync": null,
-    "trimp_history": [],
-    "seed_ctl": 41,
-    "seed_atl": 47,
+    "last_sync": "2026-04-12T10:30:04.740691+00:00",
+    "trimp_history": [
+      {
+        "date": "2026-03-02",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-03",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-04",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-05",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-06",
+        "trimp": 89.0
+      },
+      {
+        "date": "2026-03-07",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-08",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-09",
+        "trimp": 119.0
+      },
+      {
+        "date": "2026-03-10",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-11",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-12",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-13",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-14",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-15",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-16",
+        "trimp": 77.0
+      },
+      {
+        "date": "2026-03-17",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-18",
+        "trimp": 130.0
+      },
+      {
+        "date": "2026-03-19",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-20",
+        "trimp": 102.0
+      },
+      {
+        "date": "2026-03-21",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-22",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-23",
+        "trimp": 101.0
+      },
+      {
+        "date": "2026-03-24",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-25",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-26",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-27",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-28",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-29",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-03-30",
+        "trimp": 146.0
+      },
+      {
+        "date": "2026-03-31",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-01",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-02",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-03",
+        "trimp": 132.0
+      },
+      {
+        "date": "2026-04-04",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-05",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-06",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-07",
+        "trimp": 130.0
+      },
+      {
+        "date": "2026-04-08",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-09",
+        "trimp": 129.0
+      },
+      {
+        "date": "2026-04-10",
+        "trimp": 101.0
+      },
+      {
+        "date": "2026-04-11",
+        "trimp": 0.0
+      },
+      {
+        "date": "2026-04-12",
+        "trimp": 0.0
+      }
+    ],
+    "seed_ctl": 29.0,
+    "seed_atl": 64.0,
     "athlete": {
       "name": "Raviv",
       "goal": "10 km in 60 min",
       "watch": "Suunto Vertical",
       "threshold_hr": 160
-    }
+    },
+    "last_excel_seed_date": "2026-04-11"
   }
 }
