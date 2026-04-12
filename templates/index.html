@@ -130,7 +130,7 @@ new Chart(document.getElementById('hrvChart'), {
     labels,
     datasets: [
       {
-        label: 'Normal range (high)',
+        label: '_high',
         data: labels.map(() => hrvHigh),
         borderColor: 'transparent',
         backgroundColor: 'rgba(34,197,94,0.12)',
@@ -139,10 +139,20 @@ new Chart(document.getElementById('hrvChart'), {
         tension: 0,
       },
       {
-        label: 'Normal range (low)',
+        label: '_low',
         data: labels.map(() => hrvLow),
         borderColor: 'transparent',
         backgroundColor: 'rgba(34,197,94,0.12)',
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      },
+      {
+        label: 'Avg HRV (30d)',
+        data: labels.map(() => Math.round(hrv30avg)),
+        borderColor: 'rgba(34,197,94,0.5)',
+        backgroundColor: 'transparent',
+        borderDash: [4, 4],
         pointRadius: 0,
         fill: false,
         tension: 0,
@@ -167,16 +177,12 @@ new Chart(document.getElementById('hrvChart'), {
   options: {
     ...commonOpts,
     plugins: {
-      ...commonOpts.plugins,
-      tooltip: {
-        callbacks: {
-          afterBody: (items) => {
-            const v = items[0]?.raw;
-            if (v === null) return '';
-            if (v >= hrvHigh) return '↑ Above normal range';
-            if (v <= hrvLow) return '↓ Below normal range';
-            return '✓ Within normal range';
-          }
+      legend: {
+        position: 'bottom',
+        labels: {
+          boxWidth: 12,
+          font: { size: 11 },
+          filter: (item) => !item.text.startsWith('_')
         }
       }
     }
