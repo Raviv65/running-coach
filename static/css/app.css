@@ -216,6 +216,21 @@ tbody tr:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.mcard {
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 12px 14px;
+  overflow: hidden;
+}
+
 @media (max-width: 520px) {
   nav a {
     margin-left: 10px;
