@@ -95,7 +95,8 @@ h1 {
 .chart-col {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .chart-card { padding: 16px; }
@@ -218,8 +219,9 @@ tbody tr:hover {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  width: 100%;
 }
 
 .mcard {
