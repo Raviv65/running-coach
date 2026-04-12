@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Activity — Running Coach{% endblock %}
+{% block content %}
+<a href="{{ url_for('activity_log') }}" style="color:var(--muted);font-size:0.9rem;">← Back to Activities</a>
+<h1 style="margin-top:12px;">{{ activity.get('title', 'Activity') }} — {{ activity.date }}</h1>
+
+<div class="metrics-grid" style="margin-bottom:20px;">
+  <div class="card mcard"><div class="label">Distance</div><div class="value">{{ activity.get('distance_km') }} km</div></div>
+  <div class="card mcard"><div class="label">Duration</div><div class="value">{{ activity.get('duration_min') }} min</div></div>
+  <div class="card mcard"><div class="label">TRIMP</div><div class="value">{{ activity.get('trimp') }}</div></div>
+  <div class="card mcard"><div class="label">Avg HR</div><div class="value">{{ activity.get('avg_hr') }} bpm</div></div>
+  <div class="card mcard"><div class="label">Max HR</div><div class="value">{{ activity.get('max_hr') }} bpm</div></div>
+  <div class="card mcard"><div class="label">PTE</div><div class="value">{{ activity.get('peak_training_effect') }}</div></div>
+  <div class="card mcard"><div class="label">EPOC</div><div class="value">{{ activity.get('epoc') }}</div></div>
+  <div class="card mcard"><div class="label">Recovery</div><div class="value">{{ activity.get('recovery_time_hrs') }}h</div></div>
+  <div class="card mcard"><div class="label">Steps</div><div class="value">{{ activity.get('step_count') }}</div></div>
+</div>
+
+{% set zones = activity.get('hr_zones', {}) %}
+{% if zones %}
+<div class="card" style="padding:20px; margin-bottom:20px;">
+  <div class="label" style="margin-bottom:12px;">HR Zones</div>
+  <canvas id="zoneChart" height="80"></canvas>
+</div>
+{% endif %}
+
+{% if activity.get('hr_timeseries') %}
+<div class="card" style="padding:20px;">
+  <div class="label" style="margin-bottom:12px;">Heart Rate</div>
+  <canvas id="hrChart" height="120"></canvas>
+</div>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+{% if zones %}
+new Chart(document.getElementById('zoneChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'],
+    datasets: [{
+      label: 'Minutes',
+      data: [{{ zones.get('z1',0) }}, {{ zones.get('z2',0) }}, {{ zones.get('z3',0) }}, {{ zones.get('z4',0) }}, {{ zones.get('z5',0) }}],
+      backgroundColor: ['#22c55e','#84cc16','#f59e0b','#f97316','#ef4444']
+    }]
+  },
+  options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ title:{display:true,text:'Minutes'} } } }
+});
+{% endif %}
+
+{% if activity.get('hr_timeseries') %}
+const hrData = {{ activity.get('hr_timeseries') | tojson }};
+new Chart(document.getElementById('hrChart'), {
+  type: 'line',
+  data: {
+    labels: hrData.map((_, i) => i),
+    datasets: [{
+      label: 'HR (bpm)',
+      data: hrData.map(p => p.hr),
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239,68,68,0.08)',
+      pointRadius: 0,
+      tension: 0.2,
+      fill: true
+    }]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ display:false },
+      y:{ title:{display:true,text:'bpm'}, min:60 }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

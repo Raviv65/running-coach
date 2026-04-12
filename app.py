@@ -6,15 +6,17 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
+from trimp_parser import compute_trimp_from_file
 from backup import push_metrics_backup
 from compute import (
     ac_ratio,
@@ -377,6 +379,53 @@ def activity_log():
         for a in acts:
             rows.append({"date": d, **a})
     return render_template("activity.html", rows=rows)
+
+
+@app.route("/upload-activity", methods=["GET", "POST"])
+def upload_activity():
+    if request.method == "GET":
+        return render_template("upload_activity.html")
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "no file"}), 400
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+        f.save(tmp_path)
+    try:
+        result = compute_trimp_from_file(tmp_path)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        os.unlink(tmp_path)
+
+    db = load_metrics()
+    acts = db.setdefault("activities", {})
+    day = result["date"]
+    existing = acts.get(day, [])
+    already = any(abs(a.get("duration_min", 0) - result["duration_min"]) < 1 for a in existing)
+    if not already:
+        result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
+        existing.append(result)
+        acts[day] = existing
+        save_metrics(db)
+        run_daily_pipeline(send_email_now=False)
+
+    return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
+
+
+@app.route("/activity/<activity_id>")
+def activity_detail(activity_id):
+    db = load_metrics()
+    acts = db.get("activities", {})
+    activity = None
+    for day_acts in acts.values():
+        for a in day_acts:
+            if str(a.get("id", "")) == activity_id:
+                activity = a
+                break
+    if not activity:
+        abort(404)
+    return render_template("activity_detail.html", activity=activity)
 
 
 @app.get("/healthz")
