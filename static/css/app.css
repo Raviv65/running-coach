@@ -85,6 +85,23 @@ h1 {
   margin-bottom: 22px;
 }
 
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.chart-card {
+  padding: 14px 16px;
+}
+
+@media (max-width: 600px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

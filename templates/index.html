@@ -1,9 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Today — Running coach{% endblock %}
+{% block title %}Today — Running Coach{% endblock %}
 {% block content %}
 <h1>Today</h1>
 <p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
+<!-- Charts row -->
+<div class="charts-row">
+  <div class="card chart-card">
+    <div class="label">CTL vs ATL — Last 7 Days</div>
+    <canvas id="loadChart" height="120"></canvas>
+  </div>
+  <div class="card chart-card">
+    <div class="label">HRV — Last 7 Days</div>
+    <canvas id="hrvChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- Metrics grid -->
 <div class="grid">
   <div class="card">
     <div class="label">CTL</div>
@@ -33,7 +46,7 @@
   <div class="card">
     <div class="label">HRV last</div>
     <div class="value">{{ metrics.get("hrv_last") if metrics.get("hrv_last") is not none else "—" }}</div>
-    <div class="hint">RMSSD</div>
+    <div class="hint">RMSSD ms</div>
   </div>
   <div class="card">
     <div class="label">HRV 7d / 30d</div>
@@ -45,8 +58,14 @@
   </div>
   <div class="card">
     <div class="label">Sleep</div>
-    <div class="value">{{ metrics.get("sleep_duration_min") if metrics.get("sleep_duration_min") is not none else "—" }}</div>
-    <div class="hint">minutes · Q {{ metrics.get("sleep_quality") if metrics.get("sleep_quality") is not none else "—" }}</div>
+    {% set sleep_min = metrics.get("sleep_duration_min") %}
+    <div class="value">
+      {% if sleep_min is not none %}
+        {{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m
+      {% else %}—{% endif %}
+    </div>
+    {% set sq = metrics.get("sleep_quality") %}
+    <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
   </div>
   <div class="card">
     <div class="label">Resting HR</div>
@@ -64,4 +83,51 @@
     {% endif %}
   </div>
 </section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const history = {{ chart_history | tojson }};
+
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-');
+  return `${d}-${m}-${y}`;
+}
+
+const labels  = history.map(r => fmtDate(r.date));
+const ctlData = history.map(r => r.ctl);
+const atlData = history.map(r => r.atl);
+const hrvData = history.map(r => r.hrv);
+
+const commonOpts = {
+  responsive: true,
+  maintainAspectRatio: true,
+  scales: {
+    x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }, grid: { display: false } }
+  },
+  plugins: { legend: { position: "bottom" } }
+};
+
+new Chart(document.getElementById("loadChart"), {
+  type: "line",
+  data: {
+    labels,
+    datasets: [
+      { label: "CTL", data: ctlData, borderColor: "#2563eb", tension: 0.2, spanGaps: true },
+      { label: "ATL", data: atlData, borderColor: "#f97316", tension: 0.2, spanGaps: true }
+    ]
+  },
+  options: commonOpts
+});
+
+new Chart(document.getElementById("hrvChart"), {
+  type: "line",
+  data: {
+    labels,
+    datasets: [
+      { label: "HRV", data: hrvData, borderColor: "#7c3aed", tension: 0.2, spanGaps: true }
+    ]
+  },
+  options: commonOpts
+});
+</script>
 {% endblock %}

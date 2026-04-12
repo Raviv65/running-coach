@@ -298,6 +298,17 @@ def index():
     m = (db.get("metrics") or {}).get(today) or {}
     b = (db.get("briefings") or {}).get(today) or {}
     athlete = (db.get("meta") or {}).get("athlete") or {}
+    metrics_all = db.get("metrics") or {}
+    keys_7 = sorted(metrics_all.keys())[-7:]
+    chart_history = [
+        {
+            "date": k,
+            "ctl": metrics_all[k].get("ctl"),
+            "atl": metrics_all[k].get("atl"),
+            "hrv": metrics_all[k].get("hrv_last"),
+        }
+        for k in keys_7
+    ]
     return render_template(
         "index.html",
         today=today,
@@ -305,6 +316,7 @@ def index():
         briefing_html=b.get("html") or "",
         athlete=athlete,
         last_sync=(db.get("meta") or {}).get("last_sync"),
+        chart_history=chart_history,
     )
 
 
