@@ -75,4 +75,137 @@ new Chart(document.getElementById('hrChart'), {
 });
 {% endif %}
 </script>
+
+<section class="block">
+  <h2>Segment Analysis</h2>
+  <div class="card" style="padding:20px;">
+    <p class="sub" style="margin-bottom:16px;">Enter your planned segments to analyze HR drift per segment.</p>
+    <table id="seg-table" style="width:100%; margin-bottom:12px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Duration (mm:ss)</th>
+          <th>Speed (km/h)</th>
+          <th>Avg HR</th>
+          <th>Last 20s HR</th>
+          <th>Drift</th>
+        </tr>
+      </thead>
+      <tbody id="seg-body">
+        {% for i in range(7) %}
+        <tr>
+          <td style="color:var(--muted);font-size:0.85rem;">{{ i+1 }}</td>
+          <td><input type="text" class="seg-dur" placeholder="00:00" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+          <td><input type="number" class="seg-spd" placeholder="0.0" step="0.1" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+          <td class="seg-avg num">—</td>
+          <td class="seg-end num">—</td>
+          <td class="seg-drift num">—</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="addRow()" style="padding:7px 16px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:0.9rem;">+ Add Row</button>
+      <button onclick="analyzeSegments()" style="padding:7px 20px;background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.9rem;">Analyze</button>
+    </div>
+    <div id="seg-summary" style="margin-top:16px;"></div>
+  </div>
+</section>
+
+<script>
+const hrSeries = {{ activity.get('hr_timeseries', []) | tojson }};
+
+function parseDuration(str) {
+  const parts = str.trim().split(':');
+  if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  if (parts.length === 1) return parseInt(parts[0]) * 60;
+  return 0;
+}
+
+function addRow() {
+  const tbody = document.getElementById('seg-body');
+  const rowNum = tbody.rows.length + 1;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="color:var(--muted);font-size:0.85rem;">${rowNum}</td>
+    <td><input type="text" class="seg-dur" placeholder="00:00" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+    <td><input type="number" class="seg-spd" placeholder="0.0" step="0.1" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+    <td class="seg-avg num">—</td>
+    <td class="seg-end num">—</td>
+    <td class="seg-drift num">—</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function analyzeSegments() {
+  if (!hrSeries || hrSeries.length === 0) {
+    document.getElementById('seg-summary').innerHTML =
+      '<p style="color:#dc2626;">No HR timeseries data available for this activity. Re-upload the JSON file.</p>';
+    return;
+  }
+
+  const totalSamples = hrSeries.length;
+  const totalDuration = {{ activity.get('duration_min', 0) }} * 60;
+  const secPerSample = totalDuration / totalSamples;
+
+  const rows = document.getElementById('seg-body').rows;
+  let cursor = 0;
+  let hasData = false;
+
+  for (let i = 0; i < rows.length; i++) {
+    const durStr = rows[i].querySelector('.seg-dur').value;
+    const spdVal = rows[i].querySelector('.seg-spd').value;
+    if (!durStr || durStr === '00:00') continue;
+
+    const segSec = parseDuration(durStr);
+    if (segSec <= 0) continue;
+    hasData = true;
+
+    const startIdx  = Math.round(cursor / secPerSample);
+    const endIdx    = Math.min(Math.round((cursor + segSec) / secPerSample), totalSamples - 1);
+    const last20Idx = Math.max(startIdx, Math.round((cursor + segSec - 20) / secPerSample));
+
+    const segSamples = hrSeries.slice(startIdx, endIdx + 1).map(p => p.hr).filter(v => v > 0);
+    const endSamples = hrSeries.slice(last20Idx, endIdx + 1).map(p => p.hr).filter(v => v > 0);
+
+    const avgHR = segSamples.length > 0
+      ? Math.round(segSamples.reduce((a, b) => a + b, 0) / segSamples.length)
+      : null;
+    const endHR = endSamples.length > 0
+      ? Math.round(endSamples.reduce((a, b) => a + b, 0) / endSamples.length)
+      : null;
+    const drift = (avgHR !== null && endHR !== null) ? endHR - avgHR : null;
+
+    rows[i].querySelector('.seg-avg').textContent = avgHR !== null ? avgHR + ' bpm' : '—';
+    rows[i].querySelector('.seg-end').textContent = endHR !== null ? endHR + ' bpm' : '—';
+
+    const driftCell = rows[i].querySelector('.seg-drift');
+    if (drift !== null) {
+      driftCell.textContent = (drift >= 0 ? '+' : '') + drift + ' bpm';
+      driftCell.style.color = drift <= 5 ? '#15803d' : drift <= 10 ? '#c2410c' : '#dc2626';
+    } else {
+      driftCell.textContent = '—';
+    }
+
+    cursor += segSec;
+  }
+
+  if (!hasData) {
+    document.getElementById('seg-summary').innerHTML =
+      '<p style="color:var(--muted);">Enter at least one segment duration to analyze.</p>';
+    return;
+  }
+
+  const totalInput = Array.from(rows).reduce((sum, r) => {
+    const d = r.querySelector('.seg-dur').value;
+    return sum + (d ? parseDuration(d) : 0);
+  }, 0);
+  const actDur = {{ activity.get('duration_min', 0) }} * 60;
+  const remaining = actDur - totalInput;
+
+  document.getElementById('seg-summary').innerHTML = remaining > 0
+    ? `<p style="color:var(--muted);font-size:0.88rem;">⏱ ${Math.round(remaining/60)}m ${remaining%60}s unaccounted for in segments.</p>`
+    : `<p style="color:#15803d;font-size:0.88rem;">✅ Segments cover the full activity.</p>`;
+}
+</script>
 {% endblock %}
