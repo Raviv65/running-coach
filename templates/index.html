@@ -3,14 +3,7 @@
 {% block content %}
 <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
   <h1 style="margin:0;">Today</h1>
-  <span style="
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    background: {% if day_status[1] == 'green' %}rgba(34,197,94,0.15){% elif day_status[1] == 'red' %}rgba(239,68,68,0.15){% else %}rgba(249,115,22,0.15){% endif %};
-    color: {% if day_status[1] == 'green' %}#15803d{% elif day_status[1] == 'red' %}#dc2626{% else %}#c2410c{% endif %};
-  ">{{ day_status[0] }}</span>
+  <span class="day-badge badge-{{ day_status[1] }}">{{ day_status[0] }}</span>
 </div>
 <p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
@@ -99,6 +92,17 @@
   </div>
 </section>
 
+<style>
+.day-badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.badge-green { background: rgba(34,197,94,0.15); color: #15803d; }
+.badge-amber { background: rgba(249,115,22,0.15); color: #c2410c; }
+.badge-red   { background: rgba(239,68,68,0.15);  color: #dc2626; }
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const history = {{ chart_history | tojson }};
