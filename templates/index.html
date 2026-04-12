@@ -30,7 +30,7 @@
       <div class="card">
         <div class="label">TSB</div>
         {% set tsb = metrics.get("tsb") %}
-        <div class="value" style="color: {% if tsb is not none %}{% if tsb <= -5 %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
+        <div class="value" style="color: {% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">
           {{ tsb if tsb is not none else "—" }}
         </div>
       </div>
@@ -100,7 +100,13 @@
   min-height: 90px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+.chart-col .grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
