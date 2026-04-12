@@ -21,15 +21,18 @@
       </div>
       <div class="card">
         <div class="label">ATL</div>
-        <div class="value">{{ metrics.get("atl") if metrics.get("atl") is not none else "—" }}</div>
+        {% set atl = metrics.get("atl") %}
+        {% set ctl = metrics.get("ctl") %}
+        <div class="value" style="color: {% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
+          {{ atl if atl is not none else "—" }}
+        </div>
       </div>
       <div class="card">
         <div class="label">TSB</div>
-        <div class="value">{{ metrics.get("tsb") if metrics.get("tsb") is not none else "—" }}</div>
-      </div>
-      <div class="card">
-        <div class="label">Ramp (7d)</div>
-        <div class="value">{{ metrics.get("ramp_rate") if metrics.get("ramp_rate") is not none else "—" }}</div>
+        {% set tsb = metrics.get("tsb") %}
+        <div class="value" style="color: {% if tsb is not none %}{% if tsb <= -5 %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
+          {{ tsb if tsb is not none else "—" }}
+        </div>
       </div>
       <div class="card">
         <div class="label">A:C</div>
@@ -50,25 +53,16 @@
     </div>
     <div class="grid grid-2">
       <div class="card">
-        <div class="label">HRV Last</div>
-        <div class="value">{{ metrics.get("hrv_last") if metrics.get("hrv_last") is not none else "—" }}</div>
+        <div class="label">HRV (7d avg)</div>
+        <div class="value">{{ metrics.get("hrv_7d_avg") if metrics.get("hrv_7d_avg") is not none else "—" }}</div>
         <div class="hint">RMSSD ms</div>
-      </div>
-      <div class="card">
-        <div class="label">HRV 7d / 30d</div>
-        <div class="value">
-          {% if metrics.get("hrv_7d_avg") is not none %}{{ metrics.hrv_7d_avg }}{% else %}—{% endif %}
-          /
-          {% if metrics.get("hrv_30d_avg") is not none %}{{ metrics.hrv_30d_avg }}{% else %}—{% endif %}
-        </div>
       </div>
       <div class="card">
         <div class="label">Sleep</div>
         {% set sleep_min = metrics.get("sleep_duration_min") %}
-        <div class="value">
-          {% if sleep_min is not none %}
-            {{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m
-          {% else %}—{% endif %}
+        {% set sleep_hrs = (sleep_min | float) / 60 if sleep_min is not none else none %}
+        <div class="value" style="color: {% if sleep_hrs is not none %}{% if sleep_hrs < 6 %}#dc2626{% elif sleep_hrs < 7 %}#c2410c{% else %}#15803d{% endif %}{% endif %}">
+          {% if sleep_min is not none %}{{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m{% else %}—{% endif %}
         </div>
         {% set sq = metrics.get("sleep_quality") %}
         <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
@@ -102,6 +96,12 @@
 .badge-green { background: rgba(34,197,94,0.15); color: #15803d; }
 .badge-amber { background: rgba(249,115,22,0.15); color: #c2410c; }
 .badge-red   { background: rgba(239,68,68,0.15);  color: #dc2626; }
+.grid-2 .card {
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
