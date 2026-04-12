@@ -22,18 +22,13 @@
       </div>
       <div class="card mcard">
         <div class="label">ATL</div>
-        {% set atl = metrics.get("atl") %}
-        {% set ctl = metrics.get("ctl") %}
-        <div class="value" style="color:{% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">
-          {{ atl if atl is not none else "—" }}
-        </div>
+        {% set atl = metrics.get("atl") %}{% set ctl = metrics.get("ctl") %}
+        <div class="value" style="color:{% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">{{ atl if atl is not none else "—" }}</div>
       </div>
       <div class="card mcard">
         <div class="label">TSB</div>
         {% set tsb = metrics.get("tsb") %}
-        <div class="value" style="color:{% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">
-          {{ tsb if tsb is not none else "—" }}
-        </div>
+        <div class="value" style="color:{% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">{{ tsb if tsb is not none else "—" }}</div>
       </div>
       <div class="card mcard">
         <div class="label">A:C Ratio</div>
@@ -41,8 +36,7 @@
       </div>
       <div class="card mcard">
         <div class="label">Recovery</div>
-        <div class="value">{{ metrics.get("recovery_score") if metrics.get("recovery_score") is not none else "—" }}</div>
-        <div class="hint">0–100</div>
+        <div class="value">{{ metrics.get("recovery_score")|int if metrics.get("recovery_score") is not none else "—" }}{% if metrics.get("recovery_score") is not none %}%{% endif %}</div>
       </div>
       <div class="card mcard">
         <div class="label">Resting HR</div>
