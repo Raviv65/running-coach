@@ -88,18 +88,27 @@ h1 {
 .charts-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 22px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.chart-card {
-  padding: 14px 16px;
+.chart-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-card { padding: 16px; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
 }
 
 @media (max-width: 600px) {
-  .charts-row {
-    grid-template-columns: 1fr;
-  }
+  .charts-row { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
 }
 
 .grid {

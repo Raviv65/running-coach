@@ -4,72 +4,77 @@
 <h1>Today</h1>
 <p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
-<!-- Charts row -->
+<!-- Charts row with metrics underneath each -->
 <div class="charts-row">
-  <div class="card chart-card">
-    <div class="label">CTL vs ATL — Last 7 Days</div>
-    <canvas id="loadChart" height="120"></canvas>
+  <div class="chart-col">
+    <div class="card chart-card">
+      <div class="label">CTL vs ATL — Last 7 Days</div>
+      <canvas id="loadChart" height="120"></canvas>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="label">CTL</div>
+        <div class="value">{{ metrics.get("ctl") if metrics.get("ctl") is not none else "—" }}</div>
+      </div>
+      <div class="card">
+        <div class="label">ATL</div>
+        <div class="value">{{ metrics.get("atl") if metrics.get("atl") is not none else "—" }}</div>
+      </div>
+      <div class="card">
+        <div class="label">TSB</div>
+        <div class="value">{{ metrics.get("tsb") if metrics.get("tsb") is not none else "—" }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Ramp (7d)</div>
+        <div class="value">{{ metrics.get("ramp_rate") if metrics.get("ramp_rate") is not none else "—" }}</div>
+      </div>
+      <div class="card">
+        <div class="label">A:C</div>
+        <div class="value">{{ metrics.get("ac_ratio") if metrics.get("ac_ratio") is not none else "—" }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Recovery</div>
+        <div class="value">{{ metrics.get("recovery_score") if metrics.get("recovery_score") is not none else "—" }}</div>
+        <div class="hint">0–100 proxy</div>
+      </div>
+    </div>
   </div>
-  <div class="card chart-card">
-    <div class="label">HRV — Last 7 Days</div>
-    <canvas id="hrvChart" height="120"></canvas>
-  </div>
-</div>
 
-<!-- Metrics grid -->
-<div class="grid">
-  <div class="card">
-    <div class="label">CTL</div>
-    <div class="value">{{ metrics.get("ctl") if metrics.get("ctl") is not none else "—" }}</div>
-  </div>
-  <div class="card">
-    <div class="label">ATL</div>
-    <div class="value">{{ metrics.get("atl") if metrics.get("atl") is not none else "—" }}</div>
-  </div>
-  <div class="card">
-    <div class="label">TSB</div>
-    <div class="value">{{ metrics.get("tsb") if metrics.get("tsb") is not none else "—" }}</div>
-  </div>
-  <div class="card">
-    <div class="label">Ramp (7d)</div>
-    <div class="value">{{ metrics.get("ramp_rate") if metrics.get("ramp_rate") is not none else "—" }}</div>
-  </div>
-  <div class="card">
-    <div class="label">A:C</div>
-    <div class="value">{{ metrics.get("ac_ratio") if metrics.get("ac_ratio") is not none else "—" }}</div>
-  </div>
-  <div class="card">
-    <div class="label">Recovery</div>
-    <div class="value">{{ metrics.get("recovery_score") if metrics.get("recovery_score") is not none else "—" }}</div>
-    <div class="hint">0–100 proxy</div>
-  </div>
-  <div class="card">
-    <div class="label">HRV last</div>
-    <div class="value">{{ metrics.get("hrv_last") if metrics.get("hrv_last") is not none else "—" }}</div>
-    <div class="hint">RMSSD ms</div>
-  </div>
-  <div class="card">
-    <div class="label">HRV 7d / 30d</div>
-    <div class="value">
-      {% if metrics.get("hrv_7d_avg") is not none %}{{ metrics.hrv_7d_avg }}{% else %}—{% endif %}
-      /
-      {% if metrics.get("hrv_30d_avg") is not none %}{{ metrics.hrv_30d_avg }}{% else %}—{% endif %}
+  <div class="chart-col">
+    <div class="card chart-card">
+      <div class="label">HRV — Last 7 Days</div>
+      <canvas id="hrvChart" height="120"></canvas>
     </div>
-  </div>
-  <div class="card">
-    <div class="label">Sleep</div>
-    {% set sleep_min = metrics.get("sleep_duration_min") %}
-    <div class="value">
-      {% if sleep_min is not none %}
-        {{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m
-      {% else %}—{% endif %}
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="label">HRV Last</div>
+        <div class="value">{{ metrics.get("hrv_last") if metrics.get("hrv_last") is not none else "—" }}</div>
+        <div class="hint">RMSSD ms</div>
+      </div>
+      <div class="card">
+        <div class="label">HRV 7d / 30d</div>
+        <div class="value">
+          {% if metrics.get("hrv_7d_avg") is not none %}{{ metrics.hrv_7d_avg }}{% else %}—{% endif %}
+          /
+          {% if metrics.get("hrv_30d_avg") is not none %}{{ metrics.hrv_30d_avg }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">Sleep</div>
+        {% set sleep_min = metrics.get("sleep_duration_min") %}
+        <div class="value">
+          {% if sleep_min is not none %}
+            {{ (sleep_min | int) // 60 }}h {{ (sleep_min | int) % 60 }}m
+          {% else %}—{% endif %}
+        </div>
+        {% set sq = metrics.get("sleep_quality") %}
+        <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
+      </div>
+      <div class="card">
+        <div class="label">Resting HR</div>
+        <div class="value">{{ metrics.get("resting_hr") if metrics.get("resting_hr") is not none else "—" }}</div>
+      </div>
     </div>
-    {% set sq = metrics.get("sleep_quality") %}
-    <div class="hint">Quality: {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}</div>
-  </div>
-  <div class="card">
-    <div class="label">Resting HR</div>
-    <div class="value">{{ metrics.get("resting_hr") if metrics.get("resting_hr") is not none else "—" }}</div>
   </div>
 </div>
 
