@@ -4,9 +4,12 @@ Flask web app: dashboard + APScheduler (05:00 UTC pipeline, 05:30 UTC email).
 
 from __future__ import annotations
 
+import io
+import json
 import logging
 import os
 import tempfile
+import threading
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -16,7 +19,7 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
-from trimp_parser import compute_trimp_from_file
+from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from backup import push_metrics_backup
 from compute import (
     ac_ratio,
@@ -388,15 +391,13 @@ def upload_activity():
     f = request.files.get("file")
     if not f:
         return jsonify({"error": "no file"}), 400
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        tmp_path = tmp.name
-        f.save(tmp_path)
+
     try:
-        result = compute_trimp_from_file(tmp_path)
+        data = json.load(io.TextIOWrapper(f.stream, encoding="utf-8"))
+        result = compute_trimp_from_data(data)
+        del data
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    finally:
-        os.unlink(tmp_path)
 
     db = load_metrics()
     acts = db.setdefault("activities", {})
@@ -408,11 +409,18 @@ def upload_activity():
         for a in existing
     )
     if not already:
+        acts[day] = [
+            a for a in existing
+            if abs(a.get("duration_min", 0) - result["duration_min"]) >= 1
+        ]
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
-        existing.append(result)
-        acts[day] = existing
+        acts[day].append(result)
         save_metrics(db)
-        run_daily_pipeline(send_email_now=False)
+        threading.Thread(
+            target=run_daily_pipeline,
+            kwargs={"send_email_now": False},
+            daemon=True,
+        ).start()
 
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
 
