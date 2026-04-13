@@ -427,7 +427,15 @@ def upload_activity():
         ]
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
         acts[day].append(result)
+        # Save and backup immediately
         save_metrics(db)
+        try:
+            from backup import push_metrics_backup
+            push_metrics_backup(db)
+        except Exception as e:
+            logger.warning("Backup after upload failed: %s", e)
+
+        # Recompute CTL/ATL/TSB in background
         threading.Thread(
             target=run_daily_pipeline,
             kwargs={"send_email_now": False},
@@ -446,6 +454,11 @@ def save_segments(activity_id):
             if str(a.get("id", "")) == activity_id:
                 a["segments"] = request.json.get("segments", [])
                 save_metrics(db)
+                try:
+                    from backup import push_metrics_backup
+                    push_metrics_backup(db)
+                except Exception as e:
+                    logger.warning("Backup after segments save failed: %s", e)
                 return jsonify({"ok": True})
     abort(404)
 
