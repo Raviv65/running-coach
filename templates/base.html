@@ -15,11 +15,33 @@
         <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Today</a>
         <a href="{{ url_for('history') }}" class="{{ 'active' if request.endpoint == 'history' else '' }}">History</a>
         <a href="{{ url_for('activity_log') }}" class="{{ 'active' if request.endpoint == 'activity_log' else '' }}">Activities</a>
+        <button id="sync-btn" onclick="syncNow()" style="margin-left:16px;padding:5px 14px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-weight:600;font-size:0.88rem;cursor:pointer;">🔄 Sync</button>
       </nav>
     </div>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
+  <script>
+  function syncNow() {
+    const btn = document.getElementById('sync-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳...';
+    fetch('/sync-now', { method: 'POST' })
+      .then(r => r.json())
+      .then(() => {
+        btn.textContent = '✅ Done';
+        setTimeout(() => {
+          btn.textContent = '🔄 Sync';
+          btn.disabled = false;
+          location.reload();
+        }, 30000);
+      })
+      .catch(() => {
+        btn.textContent = '🔄 Sync';
+        btn.disabled = false;
+      });
+  }
+  </script>
 </body>
 </html>
