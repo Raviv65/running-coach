@@ -261,13 +261,23 @@ def scheduled_pipeline() -> None:
 
 def scheduled_email() -> None:
     try:
+        restore_from_github()
         db = load_metrics()
         today = utc_today_iso()
         b = (db.get("briefings") or {}).get(today) or {}
         md = b.get("markdown")
+
         if not md:
-            logger.warning("No briefing for %s; skipping email.", today)
+            logger.info("No briefing for %s at 05:30; retrying pipeline.", today)
+            run_daily_pipeline(send_email_now=False)
+            db = load_metrics()
+            b = (db.get("briefings") or {}).get(today) or {}
+            md = b.get("markdown")
+
+        if not md:
+            logger.warning("Briefing still missing after retry; skipping email.")
             return
+
         subj = f"Running briefing — {today}"
         send_briefing_email(subj, md)
     except Exception:
