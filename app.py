@@ -254,6 +254,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
 def scheduled_pipeline() -> None:
     try:
+        restore_from_github()
         run_daily_pipeline(send_email_now=False)
     except Exception:
         logger.error("scheduled_pipeline failed:\n%s", traceback.format_exc())
