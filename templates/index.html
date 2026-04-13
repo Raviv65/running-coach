@@ -7,6 +7,11 @@
 </div>
 <p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+  <button id="sync-btn" onclick="syncNow()" style="padding:7px 18px;background:#f4f5f8;border:1px solid var(--border);border-radius:8px;font-weight:600;font-size:0.88rem;cursor:pointer;">🔄 Sync Now</button>
+  <span id="sync-status" style="font-size:0.85rem;color:var(--muted);"></span>
+</div>
+
 <div class="charts-row">
 
   <!-- LEFT: CTL/ATL chart + 6 boxes in 2x3 grid -->
@@ -154,5 +159,26 @@ new Chart(document.getElementById('hrvChart'), {
   },
   options:{ ...commonOpts, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11}, filter:i=>!i.text.startsWith('_') } } } }
 });
+</script>
+
+<script>
+function syncNow() {
+  const btn = document.getElementById('sync-btn');
+  const status = document.getElementById('sync-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing...';
+  status.textContent = '';
+  fetch('/sync-now', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => {
+      status.textContent = 'Sync started — refresh in 30 seconds.';
+      btn.textContent = '🔄 Sync Now';
+      btn.disabled = false;
+    })
+    .catch(() => {
+      status.textContent = 'Sync failed.';
+      btn.disabled = false;
+    });
+}
 </script>
 {% endblock %}

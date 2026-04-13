@@ -465,6 +465,15 @@ def activity_detail(activity_id):
     return render_template("activity_detail.html", activity=activity)
 
 
+@app.route("/sync-now", methods=["POST"])
+def sync_now():
+    def _run():
+        restore_from_github()
+        run_daily_pipeline(send_email_now=False)
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True, "message": "Sync started"})
+
+
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
