@@ -479,6 +479,18 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.route('/debug-token')
+def debug_token():
+    import os
+    token = os.environ.get('GITHUB_TOKEN', 'NOT SET')
+    repo = os.environ.get('GITHUB_REPO', 'NOT SET')
+    return jsonify({
+        'token_prefix': token[:10] if token != 'NOT SET' else 'NOT SET',
+        'token_length': len(token),
+        'repo': repo
+    })
+
+
 
 if __name__ == "__main__":
     init_scheduler()
