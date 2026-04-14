@@ -124,6 +124,45 @@ def save_activity_json_to_gcs(raw_bytes: bytes, activity_date_str: str) -> None:
         logger.error("Failed to save activity JSON to GCS: %s", e)
 
 
+def _date_to_ddmmyyyy(date_str: str) -> str:
+    parts = date_str.split("-")
+    return parts[2] + parts[1] + parts[0] if len(parts) == 3 else date_str
+
+
+def load_activity_json_from_gcs(activity_date_str: str) -> dict | None:
+    """Load a saved Suunto JSON from GCS for a given YYYY-MM-DD date.
+    Returns the parsed DeviceLog Header + hr_timeseries, or None if not found.
+    """
+    try:
+        ddmmyyyy = _date_to_ddmmyyyy(activity_date_str)
+        client = _client()
+        blob = client.bucket(GCS_BUCKET).blob(f"activities/{ddmmyyyy}.json")
+        if not blob.exists():
+            return None
+        data = json.loads(blob.download_as_text(encoding="utf-8"))
+        return data
+    except Exception as e:
+        logger.warning("Could not load activity JSON from GCS for %s: %s", activity_date_str, e)
+        return None
+
+
+def list_activity_json_dates() -> set[str]:
+    """Return the set of YYYY-MM-DD dates that have a saved JSON in GCS."""
+    try:
+        client = _client()
+        blobs = client.bucket(GCS_BUCKET).list_blobs(prefix="activities/")
+        dates = set()
+        for blob in blobs:
+            name = blob.name.split("/")[-1].replace(".json", "")  # DDMMYYYY
+            if len(name) == 8:
+                dd, mm, yyyy = name[:2], name[2:4], name[4:]
+                dates.add(f"{yyyy}-{mm}-{dd}")
+        return dates
+    except Exception as e:
+        logger.warning("Could not list activity JSONs from GCS: %s", e)
+        return set()
+
+
 def restore_from_github() -> bool:
     """No-op — GCS is now the source of truth."""
     return False

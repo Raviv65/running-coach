@@ -32,7 +32,7 @@ from compute import (
     daily_trimp_totals,
 )
 from email_sender import markdown_to_html, send_briefing_email
-from storage import load_metrics, restore_from_github, save_metrics, save_activity_json_to_gcs
+from storage import load_metrics, restore_from_github, save_metrics, save_activity_json_to_gcs, load_activity_json_from_gcs, list_activity_json_dates
 restore_from_github()
 from sync import (
     RunalyzeClient,
@@ -435,10 +435,11 @@ def history():
 @app.route("/activity")
 def activity_log():
     db = load_metrics()
+    json_dates = list_activity_json_dates()
     rows: list[dict[str, Any]] = []
     for d, acts in sorted((db.get("activities") or {}).items(), reverse=True):
         for a in acts:
-            rows.append({"date": d, **a})
+            rows.append({"date": d, "has_json": d in json_dates, **a})
     return render_template("activity.html", rows=rows)
 
 
@@ -523,10 +524,26 @@ def activity_detail(activity_id):
     for day_acts in acts.values():
         for a in day_acts:
             if str(a.get("id", "")) == activity_id:
-                activity = a
+                activity = dict(a)  # copy so we can enrich without mutating db
                 break
     if not activity:
         abort(404)
+
+    # Enrich with Suunto JSON from GCS if available for this date
+    gcs_data = load_activity_json_from_gcs(activity.get("date", ""))
+    if gcs_data:
+        from trimp_parser import compute_trimp_from_data
+        try:
+            parsed = compute_trimp_from_data(gcs_data)
+            # Overlay Suunto-derived fields — GCS JSON is source of truth for these
+            for field in ("hr_timeseries", "epoc", "calories_kcal", "tss",
+                          "avg_hr", "max_hr", "peak_training_effect",
+                          "recovery_time_hrs", "step_count"):
+                if field in parsed:
+                    activity[field] = parsed[field]
+        except Exception as e:
+            logger.warning("Could not enrich activity from GCS JSON: %s", e)
+
     return render_template("activity_detail.html", activity=activity)
 
 
