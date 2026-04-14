@@ -129,6 +129,8 @@ new Chart(document.getElementById('zoneChart'), {
       scales: {
         x: {
           type: 'linear',
+          min: 0,
+          max: {{ activity.get('duration_min', 0) | round(2) }},
           title: { display: true, text: 'Time (min)' },
           ticks: { stepSize: 10, maxRotation: 0, callback: val => val + ' min' },
           grid: { color: '#e5e7eb' },
