@@ -118,16 +118,32 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
     if activities:
         grouped = group_activities_by_date(activities, running_only=True)
-        # Preserve manually uploaded activities (suunto-* IDs) not in Runalyze
+        # Merge manually uploaded suunto-* fields into matching Runalyze activities.
+        # Fields from the Suunto JSON (EPOC, calories, segments, hr_timeseries, tss)
+        # are not available from Runalyze, so we carry them over when the same run
+        # appears in both (matched by day + duration within 1 min).
+        # If no Runalyze match exists yet, keep the suunto-* entry as-is.
+        _SUUNTO_FIELDS = {"epoc", "calories_kcal", "tss", "segments", "hr_timeseries"}
         existing_acts = db.get("activities", {})
         for day, day_acts in existing_acts.items():
             manual = [a for a in day_acts if str(a.get("id", "")).startswith("suunto-")]
-            if manual:
-                runalyze_day = grouped.get(day, [])
-                for m in manual:
-                    # Only keep if no Runalyze activity with same duration exists
-                    if not any(abs(r.get("duration_min", 0) - m.get("duration_min", 0)) < 1 for r in runalyze_day):
-                        grouped.setdefault(day, []).append(m)
+            if not manual:
+                continue
+            runalyze_day = grouped.get(day, [])
+            for m in manual:
+                match = next(
+                    (r for r in runalyze_day
+                     if abs(r.get("duration_min", 0) - m.get("duration_min", 0)) < 1),
+                    None,
+                )
+                if match:
+                    # Runalyze activity now exists — merge Suunto-only fields in
+                    for field in _SUUNTO_FIELDS:
+                        if field in m and field not in match:
+                            match[field] = m[field]
+                else:
+                    # Not in Runalyze yet — keep the suunto-* entry
+                    grouped.setdefault(day, []).append(m)
         db["activities"] = grouped
     else:
         grouped = _activities_from_db(db)
