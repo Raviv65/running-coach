@@ -151,6 +151,7 @@ new Chart(document.getElementById('zoneChart'), {
           <th>#</th>
           <th>Duration (mm:ss)</th>
           <th>Speed (km/h)</th>
+          <th>Distance</th>
           <th>Avg HR</th>
           <th>Last 20s HR</th>
           <th>Drift</th>
@@ -162,6 +163,7 @@ new Chart(document.getElementById('zoneChart'), {
           <td style="color:var(--muted);font-size:0.85rem;">{{ i+1 }}</td>
           <td><input type="text" class="seg-dur" placeholder="00:00" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
           <td><input type="number" class="seg-spd" placeholder="0.0" step="0.1" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+          <td class="seg-dist num">—</td>
           <td class="seg-avg num">—</td>
           <td class="seg-end num">—</td>
           <td class="seg-drift num">—</td>
@@ -242,6 +244,7 @@ function addRow() {
     <td style="color:var(--muted);font-size:0.85rem;">${rowNum}</td>
     <td><input type="text" class="seg-dur" placeholder="00:00" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
     <td><input type="number" class="seg-spd" placeholder="0.0" step="0.1" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.9rem;"></td>
+    <td class="seg-dist num">—</td>
     <td class="seg-avg num">—</td>
     <td class="seg-end num">—</td>
     <td class="seg-drift num">—</td>
@@ -263,6 +266,7 @@ function analyzeSegments() {
   const rows = document.getElementById('seg-body').rows;
   let cursor = 0;
   let hasData = false;
+  let totalSegDist = 0;
 
   for (let i = 0; i < rows.length; i++) {
     const durStr = rows[i].querySelector('.seg-dur').value;
@@ -272,6 +276,11 @@ function analyzeSegments() {
     const segSec = parseDuration(durStr);
     if (segSec <= 0) continue;
     hasData = true;
+
+    // Distance = speed (km/h) × time (h)
+    const spd = parseFloat(spdVal) || 0;
+    const distKm = spd > 0 ? spd * (segSec / 3600) : null;
+    if (distKm !== null) totalSegDist += distKm;
 
     const startIdx  = Math.round(cursor / secPerSample);
     const endIdx    = Math.min(Math.round((cursor + segSec) / secPerSample), totalSamples - 1);
@@ -288,8 +297,9 @@ function analyzeSegments() {
       : null;
     const drift = (avgHR !== null && endHR !== null) ? endHR - avgHR : null;
 
-    rows[i].querySelector('.seg-avg').textContent = avgHR !== null ? avgHR + ' bpm' : '—';
-    rows[i].querySelector('.seg-end').textContent = endHR !== null ? endHR + ' bpm' : '—';
+    rows[i].querySelector('.seg-dist').textContent = distKm !== null ? distKm.toFixed(2) + ' km' : '—';
+    rows[i].querySelector('.seg-avg').textContent  = avgHR !== null ? avgHR + ' bpm' : '—';
+    rows[i].querySelector('.seg-end').textContent  = endHR !== null ? endHR + ' bpm' : '—';
 
     const driftCell = rows[i].querySelector('.seg-drift');
     if (drift !== null) {
@@ -314,10 +324,13 @@ function analyzeSegments() {
   }, 0);
   const actDur = {{ activity.get('duration_min', 0) }} * 60;
   const remaining = actDur - totalInput;
+  const distSummary = totalSegDist > 0
+    ? ` &nbsp;·&nbsp; <b>Total segment distance: ${totalSegDist.toFixed(2)} km</b>`
+    : '';
 
   document.getElementById('seg-summary').innerHTML = remaining > 0
-    ? `<p style="color:var(--muted);font-size:0.88rem;">⏱ ${Math.round(remaining/60)}m ${remaining%60}s unaccounted for in segments.</p>`
-    : `<p style="color:#15803d;font-size:0.88rem;">✅ Segments cover the full activity.</p>`;
+    ? `<p style="color:var(--muted);font-size:0.88rem;">⏱ ${Math.round(remaining/60)}m ${remaining%60}s unaccounted for in segments.${distSummary}</p>`
+    : `<p style="color:#15803d;font-size:0.88rem;">✅ Segments cover the full activity.${distSummary}</p>`;
 }
 </script>
 {% endblock %}
