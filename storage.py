@@ -48,8 +48,32 @@ def save_metrics(data: dict[str, Any]) -> None:
         raise
 
 
+def _filter_suunto_json(raw_bytes: bytes) -> bytes:
+    """Strip unneeded fields from a Suunto DeviceLog JSON before storage.
+
+    Keeps: Header, Windows, Device (intact).
+    Samples: retains only TimeISO8601 + HR — drops Battery, Pressure,
+    Temperature, Speed, Altitude, Cadence, Power, VerticalSpeed, etc.
+    Typical reduction: ~85% (1.1 MB → ~150 KB).
+    """
+    try:
+        data = json.loads(raw_bytes.decode("utf-8"))
+        dl = data.get("DeviceLog", {})
+        samples = dl.get("Samples", [])
+        _KEEP = {"TimeISO8601", "HR", "Events"}
+        dl["Samples"] = [
+            {k: v for k, v in s.items() if k in _KEEP}
+            for s in samples
+            if "HR" in s or "Events" in s  # drop timestamp-only rows
+        ]
+        return json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    except Exception as e:
+        logger.warning("Could not filter Suunto JSON, saving raw: %s", e)
+        return raw_bytes
+
+
 def save_activity_json_to_gcs(raw_bytes: bytes, activity_date_str: str) -> None:
-    """Save raw Suunto JSON upload to GCS at activities/DDMMYYYY.json.
+    """Save filtered Suunto JSON to GCS at activities/DDMMYYYY.json.
 
     activity_date_str should be in YYYY-MM-DD format (e.g. '2026-04-12').
     The GCS path will be activities/12042026.json.
@@ -57,16 +81,19 @@ def save_activity_json_to_gcs(raw_bytes: bytes, activity_date_str: str) -> None:
     try:
         # Convert YYYY-MM-DD -> DDMMYYYY
         parts = activity_date_str.split("-")
-        if len(parts) == 3:
-            ddmmyyyy = parts[2] + parts[1] + parts[0]
-        else:
-            ddmmyyyy = activity_date_str
+        ddmmyyyy = parts[2] + parts[1] + parts[0] if len(parts) == 3 else activity_date_str
         gcs_path = f"activities/{ddmmyyyy}.json"
+        filtered = _filter_suunto_json(raw_bytes)
+        original_kb = len(raw_bytes) // 1024
+        filtered_kb = len(filtered) // 1024
         client = _client()
         bucket = client.bucket(GCS_BUCKET)
         blob = bucket.blob(gcs_path)
-        blob.upload_from_string(raw_bytes, content_type="application/json")
-        logger.info("Activity JSON saved to GCS at %s", gcs_path)
+        blob.upload_from_string(filtered, content_type="application/json")
+        logger.info(
+            "Activity JSON saved to GCS at %s (%d KB → %d KB)",
+            gcs_path, original_kb, filtered_kb,
+        )
     except Exception as e:
         logger.error("Failed to save activity JSON to GCS: %s", e)
 
