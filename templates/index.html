@@ -5,7 +5,7 @@
   <h1 style="margin:0;">Today</h1>
   <span class="day-badge badge-{{ day_status[1] }}">{{ day_status[0] }}</span>
 </div>
-<p class="sub">{{ today }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
+<p class="sub">{{ today | datefmt }} · {{ athlete.name }} · {{ athlete.goal }}{% if last_sync %} · Last sync {{ last_sync[:19] }}Z{% endif %}</p>
 
 <div class="charts-row">
 

@@ -49,6 +49,18 @@ logger = logging.getLogger("running-coach")
 app = Flask(__name__)
 
 
+@app.template_filter("datefmt")
+def datefmt(value: str) -> str:
+    """Convert YYYY-MM-DD to DD-MM-YYYY for display."""
+    try:
+        parts = str(value).split("-")
+        if len(parts) == 3:
+            return f"{parts[2]}-{parts[1]}-{parts[0]}"
+    except Exception:
+        pass
+    return value
+
+
 def utc_today_iso() -> str:
     return datetime.now(timezone.utc).date().isoformat()
 

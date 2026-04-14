@@ -2,7 +2,7 @@
 {% block title %}Activity — Running Coach{% endblock %}
 {% block content %}
 <a href="{{ url_for('activity_log') }}" style="color:var(--muted);font-size:0.9rem;">← Back to Activities</a>
-<h1 style="margin-top:12px;">{{ activity.get('title', 'Activity') }} — {{ activity.date }}</h1>
+<h1 style="margin-top:12px;">{{ activity.get('title', 'Activity') }} — {{ activity.date | datefmt }}</h1>
 
 <div class="metrics-grid" style="margin-bottom:20px;">
   <div class="card mcard"><div class="label">Distance</div><div class="value">{% if activity.get('distance_km') is not none %}{{ activity.get('distance_km') }} km{% else %}—{% endif %}</div></div>
@@ -78,7 +78,19 @@ new Chart(document.getElementById('zoneChart'), {
         x: {
           display: true,
           title: { display: true, text: 'Time (min)' },
-          ticks: { maxTicksLimit: 10 }
+          ticks: {
+            maxRotation: 0,
+            callback: function(val, idx) {
+              const mins = parseFloat(this.getLabelForValue(val));
+              return Number.isFinite(mins) && Math.round(mins) % 10 === 0 ? Math.round(mins) : null;
+            },
+          },
+          grid: {
+            color: function(ctx) {
+              const mins = parseFloat(ctx.chart.data.labels[ctx.index]);
+              return Number.isFinite(mins) && Math.round(mins) % 10 === 0 ? '#d1d5db' : 'transparent';
+            },
+          },
         },
         y: { title: { display: true, text: 'bpm' }, min: 60 }
       }
