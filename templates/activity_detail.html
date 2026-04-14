@@ -143,6 +143,28 @@ new Chart(document.getElementById('zoneChart'), {
 {% endif %}
 </script>
 
+<section class="block" style="margin-top:20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+    <h2 style="margin:0;">Activity Debrief</h2>
+    <button id="debrief-btn" onclick="generateDebrief()"
+      style="padding:7px 18px;background:var(--accent);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.9rem;">
+      {% if activity.get('debrief_html') %}↻ Regenerate{% else %}✨ Generate Debrief{% endif %}
+    </button>
+  </div>
+  <div class="card" style="padding:20px;">
+    <div id="debrief-content">
+      {% if activity.get('debrief_html') %}
+        {{ activity.debrief_html | safe }}
+        <p style="color:var(--muted);font-size:0.8rem;margin-top:12px;border-top:1px solid var(--border);padding-top:8px;">
+          Generated {{ activity.get('debrief_generated_utc', '')[:10] | datefmt }}
+        </p>
+      {% else %}
+        <p class="sub">Click "✨ Generate Debrief" to get a Claude AI analysis of this session.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
 <section class="block">
   <h2>Segment Analysis</h2>
   <div class="card" style="padding:20px;">
@@ -252,6 +274,34 @@ function addRow() {
     <td class="seg-drift num">—</td>
   `;
   tbody.appendChild(tr);
+}
+
+function generateDebrief() {
+  const btn = document.getElementById('debrief-btn');
+  const content = document.getElementById('debrief-content');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating…';
+  content.innerHTML = '<p class="sub" style="padding:8px 0;">Asking Claude to analyse your run… this may take a few seconds.</p>';
+
+  fetch('/activity/{{ activity.get("id") }}/debrief', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        const dateStr = (data.generated_utc || '').slice(0, 10);
+        content.innerHTML = data.html +
+          `<p style="color:var(--muted);font-size:0.8rem;margin-top:12px;border-top:1px solid var(--border);padding-top:8px;">Generated ${dateStr}</p>`;
+        btn.textContent = '↻ Regenerate';
+      } else {
+        content.innerHTML = `<p style="color:#dc2626;">❌ ${data.error || 'Failed to generate debrief.'}</p>`;
+        btn.textContent = '✨ Generate Debrief';
+      }
+      btn.disabled = false;
+    })
+    .catch(() => {
+      content.innerHTML = '<p style="color:#dc2626;">❌ Request failed. Check your connection.</p>';
+      btn.textContent = '✨ Generate Debrief';
+      btn.disabled = false;
+    });
 }
 
 function analyzeSegments() {

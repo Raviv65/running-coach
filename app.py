@@ -139,7 +139,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         _PRESERVE = {
             "epoc", "calories_kcal", "tss", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
-            "step_count",
+            "step_count", "debrief_html", "debrief_generated_utc",
         }
         existing_acts = db.get("activities", {})
         # Build a lookup of existing Runalyze activities by ID for fast merge
@@ -557,6 +557,168 @@ def activity_detail(activity_id):
             logger.warning("Could not enrich activity from GCS JSON: %s", e)
 
     return render_template("activity_detail.html", activity=activity)
+
+
+def _compute_segment_stats(hr_timeseries, segments, total_duration_sec):
+    """Compute per-segment HR stats for the debrief prompt (mirrors JS logic)."""
+    if not hr_timeseries or not segments:
+        return []
+    n = len(hr_timeseries)
+    sec_per_sample = total_duration_sec / n if n > 0 else 1
+
+    def _parse(s):
+        if not s:
+            return 0
+        p = str(s).strip().split(":")
+        return int(p[0]) * 60 + int(p[1]) if len(p) == 2 else int(p[0]) * 60
+
+    results, cursor = [], 0
+    for seg in segments:
+        seg_sec = _parse(seg.get("duration", ""))
+        spd = float(seg.get("speed") or 0)
+        if seg_sec <= 0:
+            continue
+        si = round(cursor / sec_per_sample)
+        ei = min(round((cursor + seg_sec) / sec_per_sample), n - 1)
+        l20i = max(si, round((cursor + seg_sec - 20) / sec_per_sample))
+        seg_hrs = [p["hr"] for p in hr_timeseries[si : ei + 1] if p.get("hr", 0) > 0]
+        end_hrs = [p["hr"] for p in hr_timeseries[l20i : ei + 1] if p.get("hr", 0) > 0]
+        avg_hr = round(sum(seg_hrs) / len(seg_hrs)) if seg_hrs else None
+        end_hr = round(sum(end_hrs) / len(end_hrs)) if end_hrs else None
+        drift = (end_hr - avg_hr) if avg_hr is not None and end_hr is not None else None
+        dist_km = round(spd * seg_sec / 3600, 2) if spd > 0 else None
+        results.append({
+            "duration": seg.get("duration"),
+            "speed": spd,
+            "dist_km": dist_km,
+            "avg_hr": avg_hr,
+            "end_hr": end_hr,
+            "drift": drift,
+        })
+        cursor += seg_sec
+    return results
+
+
+def _build_activity_debrief_prompt(activity: dict, athlete: dict) -> str:
+    name = athlete.get("name", "the athlete")
+    goal = athlete.get("goal", "improve performance")
+    thr = athlete.get("threshold_hr", 160)
+
+    lines = [
+        f"You are a running coach analyzing a training session for {name}, "
+        f"who is training to: {goal}. Their lactate threshold HR is ~{thr} bpm.",
+        "",
+        f"Activity: {activity.get('title', 'Run')} — {activity.get('date', '')}",
+        f"Sport: {activity.get('sport', 'Running')}",
+        "",
+        "## Key Stats",
+    ]
+
+    for label, key, fmt in [
+        ("Distance",            "distance_km",          lambda v: f"{v} km"),
+        ("Duration",            "duration_min",         lambda v: f"{v:.1f} min"),
+        ("TRIMP",               "trimp",                lambda v: str(v)),
+        ("TSS",                 "tss",                  lambda v: str(v)),
+        ("Avg HR",              "avg_hr",               lambda v: f"{v} bpm"),
+        ("Max HR",              "max_hr",               lambda v: f"{v} bpm"),
+        ("Peak Training Effect","peak_training_effect", lambda v: str(v)),
+        ("EPOC",                "epoc",                 lambda v: str(v)),
+        ("Calories",            "calories_kcal",        lambda v: f"{v} kcal"),
+        ("Recovery Time",       "recovery_time_hrs",    lambda v: f"{v}h"),
+    ]:
+        val = activity.get(key)
+        if val is not None:
+            lines.append(f"- {label}: {fmt(val)}")
+
+    zones = activity.get("hr_zones", {})
+    if zones:
+        lines += ["", "## HR Zone Distribution (minutes)"]
+        for z in ["z1", "z2", "z3", "z4", "z5"]:
+            v = zones.get(z)
+            if v:
+                lines.append(f"- {z.upper()}: {v:.1f} min")
+
+    seg_stats = _compute_segment_stats(
+        activity.get("hr_timeseries"),
+        activity.get("segments", []),
+        (activity.get("duration_min") or 0) * 60,
+    )
+    if seg_stats:
+        lines += ["", "## Segment Analysis"]
+        for i, s in enumerate(seg_stats, 1):
+            parts = [f"S{i}: {s['duration']}"]
+            if s["speed"]:
+                parts.append(f"{s['speed']} km/h")
+            if s["dist_km"]:
+                parts.append(f"{s['dist_km']} km")
+            if s["avg_hr"]:
+                parts.append(f"avg HR {s['avg_hr']} bpm")
+            if s["drift"] is not None:
+                drift_str = f"+{s['drift']}" if s["drift"] >= 0 else str(s["drift"])
+                parts.append(f"drift {drift_str} bpm")
+            lines.append("- " + " | ".join(parts))
+
+    lines += [
+        "",
+        "---",
+        "",
+        "Write a concise activity debrief with exactly three clearly labeled sections:",
+        "1. ✅ **What went well** — 2–3 bullet points highlighting positives (HR control, pacing, consistency, etc.)",
+        "2. ⚠️ **Areas to improve** — 2–3 bullet points with specific, actionable feedback",
+        "3. 📋 **Summary** — 2–3 sentences overall take on the session and how it fits the training goal",
+        "",
+        "Be specific — reference the numbers. Keep the tone encouraging but honest.",
+        "Output clean HTML using only <h3>, <p>, <ul>, <li>, <strong> tags. No markdown.",
+    ]
+    return "\n".join(lines)
+
+
+@app.route("/activity/<activity_id>/debrief", methods=["POST"])
+def generate_activity_debrief(activity_id):
+    db = load_metrics()
+    acts = db.get("activities", {})
+    activity_row = None
+    for day_acts in acts.values():
+        for a in day_acts:
+            if str(a.get("id", "")) == activity_id:
+                activity_row = a
+                break
+        if activity_row:
+            break
+    if not activity_row:
+        abort(404)
+
+    # Enrich with Suunto GCS JSON
+    act_copy = dict(activity_row)
+    gcs_data = load_activity_json_from_gcs(act_copy.get("date", ""))
+    if gcs_data:
+        try:
+            from trimp_parser import compute_trimp_from_data as _ctfd
+            parsed = _ctfd(gcs_data)
+            for field in ("hr_timeseries", "epoc", "calories_kcal", "tss",
+                          "avg_hr", "max_hr", "peak_training_effect",
+                          "recovery_time_hrs", "step_count"):
+                if field in parsed:
+                    act_copy[field] = parsed[field]
+        except Exception as e:
+            logger.warning("Could not enrich activity for debrief: %s", e)
+
+    athlete = (db.get("meta") or {}).get("athlete") or {}
+    prompt = _build_activity_debrief_prompt(act_copy, athlete)
+
+    try:
+        text, model = call_claude(prompt)
+        debrief_html = markdown_to_html(text)
+    except Exception as e:
+        logger.error("Claude debrief failed: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+    # Persist back to the db row
+    activity_row["debrief_html"] = debrief_html
+    activity_row["debrief_generated_utc"] = datetime.now(timezone.utc).isoformat()
+    save_metrics(db)
+    return jsonify({"ok": True, "html": debrief_html,
+                    "generated_utc": activity_row["debrief_generated_utc"]})
 
 
 @app.route("/sync-now", methods=["POST"])
