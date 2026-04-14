@@ -34,6 +34,7 @@
 {% endif %}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <script>
 {% if zones %}
 new Chart(document.getElementById('zoneChart'), {
@@ -52,10 +53,59 @@ new Chart(document.getElementById('zoneChart'), {
 
 {% if activity.get('hr_timeseries') %}
 (function() {
-  const rawHr = {{ activity.get('hr_timeseries') | tojson }};
+  const rawHr   = {{ activity.get('hr_timeseries') | tojson }};
+  const segments = {{ activity.get('segments', []) | tojson }};
+
   const MAX_PTS = 300;
   const step = Math.max(1, Math.floor(rawHr.length / MAX_PTS));
   const hrData = rawHr.filter((_, i) => i % step === 0);
+
+  // Segment colours (background fill, border)
+  const SEG_COLORS = [
+    ['rgba(59,130,246,0.12)',  '#3b82f6'],
+    ['rgba(16,185,129,0.12)', '#10b981'],
+    ['rgba(245,158,11,0.12)', '#f59e0b'],
+    ['rgba(168,85,247,0.12)', '#a855f7'],
+    ['rgba(236,72,153,0.12)', '#ec4899'],
+    ['rgba(20,184,166,0.12)', '#14b8a6'],
+    ['rgba(249,115,22,0.12)', '#f97316'],
+    ['rgba(99,102,241,0.12)', '#6366f1'],
+  ];
+
+  // Parse "mm:ss" → seconds
+  function parseDur(str) {
+    if (!str) return 0;
+    const p = str.trim().split(':');
+    return p.length === 2 ? parseInt(p[0]) * 60 + parseInt(p[1]) : parseInt(p[0]) * 60;
+  }
+
+  // Build annotation boxes from saved segments
+  const annotations = {};
+  let cursor = 0;
+  segments.forEach((seg, i) => {
+    const durSec = parseDur(seg.duration);
+    if (!durSec) return;
+    const xMin = parseFloat((cursor / 60).toFixed(2));
+    const xMax = parseFloat(((cursor + durSec) / 60).toFixed(2));
+    const [bg, border] = SEG_COLORS[i % SEG_COLORS.length];
+    annotations[`seg${i}`] = {
+      type: 'box',
+      xMin, xMax,
+      backgroundColor: bg,
+      borderColor: border,
+      borderWidth: 1.5,
+      label: {
+        display: true,
+        content: `S${i + 1}`,
+        position: { x: 'center', y: 'start' },
+        color: border,
+        font: { size: 11, weight: 'bold' },
+        yAdjust: 6,
+      },
+    };
+    cursor += durSec;
+  });
+
   new Chart(document.getElementById('hrChart'), {
     type: 'line',
     data: {
@@ -63,24 +113,24 @@ new Chart(document.getElementById('zoneChart'), {
         label: 'HR (bpm)',
         data: hrData.map(p => ({ x: parseFloat((p.t / 60).toFixed(2)), y: p.hr })),
         borderColor: '#ef4444',
-        backgroundColor: 'rgba(239,68,68,0.08)',
+        backgroundColor: 'rgba(239,68,68,0.06)',
         pointRadius: 0,
         tension: 0.2,
-        fill: true
+        fill: true,
+        order: 1,
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        annotation: { annotations },
+      },
       scales: {
         x: {
           type: 'linear',
           title: { display: true, text: 'Time (min)' },
-          ticks: {
-            stepSize: 10,
-            maxRotation: 0,
-            callback: val => val + ' min',
-          },
+          ticks: { stepSize: 10, maxRotation: 0, callback: val => val + ' min' },
           grid: { color: '#e5e7eb' },
         },
         y: { title: { display: true, text: 'bpm' }, min: 60 }
