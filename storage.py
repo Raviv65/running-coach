@@ -48,16 +48,36 @@ def save_metrics(data: dict[str, Any]) -> None:
         raise
 
 
+# Suunto ActivityType codes for indoor/treadmill activities.
+# Speed, Altitude, Distance etc. are meaningless on a treadmill so we strip them.
+# Outdoor activities keep all sensor data for future analysis.
+_TREADMILL_ACTIVITY_TYPES = {
+    11,   # Treadmill Running
+    79,   # Indoor Running (some Suunto firmware versions)
+}
+
+
+def _is_treadmill(data: dict) -> bool:
+    activity_type = data.get("DeviceLog", {}).get("Header", {}).get("ActivityType")
+    return activity_type in _TREADMILL_ACTIVITY_TYPES
+
+
 def _filter_suunto_json(raw_bytes: bytes) -> bytes:
     """Strip unneeded fields from a Suunto DeviceLog JSON before storage.
 
-    Keeps: Header, Windows, Device (intact).
+    Only applied for treadmill activities (ActivityType in _TREADMILL_ACTIVITY_TYPES).
+    For outdoor activities the file is saved as-is.
+
+    Treadmill filter keeps: Header, Windows, Device (intact).
     Samples: retains only TimeISO8601 + HR — drops Battery, Pressure,
     Temperature, Speed, Altitude, Cadence, Power, VerticalSpeed, etc.
-    Typical reduction: ~85% (1.1 MB → ~150 KB).
+    Typical reduction: ~80% (1.1 MB → ~200 KB).
     """
     try:
         data = json.loads(raw_bytes.decode("utf-8"))
+        if not _is_treadmill(data):
+            logger.info("Non-treadmill activity — saving JSON unfiltered")
+            return raw_bytes
         dl = data.get("DeviceLog", {})
         samples = dl.get("Samples", [])
         _KEEP = {"TimeISO8601", "HR", "Events"}
@@ -66,6 +86,12 @@ def _filter_suunto_json(raw_bytes: bytes) -> bytes:
             for s in samples
             if "HR" in s or "Events" in s  # drop timestamp-only rows
         ]
+        logger.info(
+            "Treadmill activity (type %s) — filtered samples from %d to %d",
+            data["DeviceLog"]["Header"].get("ActivityType"),
+            len(samples),
+            len(dl["Samples"]),
+        )
         return json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     except Exception as e:
         logger.warning("Could not filter Suunto JSON, saving raw: %s", e)
