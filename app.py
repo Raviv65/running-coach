@@ -118,6 +118,16 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
     if activities:
         grouped = group_activities_by_date(activities, running_only=True)
+        # Preserve manually uploaded activities (suunto-* IDs) not in Runalyze
+        existing_acts = db.get("activities", {})
+        for day, day_acts in existing_acts.items():
+            manual = [a for a in day_acts if str(a.get("id", "")).startswith("suunto-")]
+            if manual:
+                runalyze_day = grouped.get(day, [])
+                for m in manual:
+                    # Only keep if no Runalyze activity with same duration exists
+                    if not any(abs(r.get("duration_min", 0) - m.get("duration_min", 0)) < 1 for r in runalyze_day):
+                        grouped.setdefault(day, []).append(m)
         db["activities"] = grouped
     else:
         grouped = _activities_from_db(db)
@@ -487,6 +497,7 @@ def sync_now():
     return jsonify({"ok": True, "message": "Sync started"})
 
 
+@app.get("/health")
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
