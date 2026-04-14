@@ -137,8 +137,10 @@ new Chart(document.getElementById('loadChart'), {
 });
 
 const hrv30avg = {{ metrics.get("hrv_30d_avg") or 29 }};
+const hrv7avg  = {{ metrics.get("hrv_7d_avg")  or "null" }};
 const hrvLow  = Math.round(hrv30avg * 0.85);
 const hrvHigh = Math.round(hrv30avg * 1.15);
+const hrvAvgLine = hrv7avg !== null ? Math.round(hrv7avg) : Math.round(hrv30avg);
 
 new Chart(document.getElementById('hrvChart'), {
   type:'line', data:{
@@ -146,7 +148,7 @@ new Chart(document.getElementById('hrvChart'), {
     datasets:[
       { label:'_high', data:labels.map(()=>hrvHigh), borderColor:'transparent', backgroundColor:'rgba(34,197,94,0.12)', pointRadius:0, fill:'+1', tension:0 },
       { label:'_low',  data:labels.map(()=>hrvLow),  borderColor:'transparent', backgroundColor:'rgba(34,197,94,0.12)', pointRadius:0, fill:false, tension:0 },
-      { label:'Avg (30d)', data:labels.map(()=>Math.round(hrv30avg)), borderColor:'rgba(34,197,94,0.5)', borderDash:[4,4], pointRadius:0, fill:false, tension:0 },
+      { label:'Avg HRV (7d)', data:labels.map(()=>hrvAvgLine), borderColor:'rgba(34,197,94,0.6)', borderDash:[4,4], pointRadius:0, fill:false, tension:0 },
       { label:'HRV', data:hrvData, borderColor:'rgba(34,197,94,0.9)', tension:0.3, pointRadius:5,
         pointBackgroundColor:hrvData.map(v=>v===null?'transparent':v>=hrvHigh?'#f97316':v<=hrvLow?'#dc2626':'rgba(34,197,94,0.9)'),
         fill:false }
