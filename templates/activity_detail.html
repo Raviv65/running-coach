@@ -14,6 +14,8 @@
   <div class="card mcard"><div class="label">EPOC</div><div class="value">{% if activity.get('epoc') is not none %}{{ activity.get('epoc') }}{% else %}—{% endif %}</div></div>
   <div class="card mcard"><div class="label">Recovery</div><div class="value">{% if activity.get('recovery_time_hrs') is not none %}{{ activity.get('recovery_time_hrs') }}h{% else %}—{% endif %}</div></div>
   <div class="card mcard"><div class="label">Steps</div><div class="value">{% if activity.get('step_count') is not none %}{{ activity.get('step_count') }}{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">Calories</div><div class="value">{% if activity.get('calories_kcal') is not none %}{{ activity.get('calories_kcal') }} kcal{% else %}—{% endif %}</div></div>
+  <div class="card mcard"><div class="label">TSS</div><div class="value">{% if activity.get('tss') is not none %}{{ activity.get('tss') }}{% else %}—{% endif %}</div></div>
 </div>
 
 {% set zones = activity.get('hr_zones', {}) %}
@@ -49,30 +51,40 @@ new Chart(document.getElementById('zoneChart'), {
 {% endif %}
 
 {% if activity.get('hr_timeseries') %}
-const hrData = {{ activity.get('hr_timeseries') | tojson }};
-new Chart(document.getElementById('hrChart'), {
-  type: 'line',
-  data: {
-    labels: hrData.map((_, i) => i),
-    datasets: [{
-      label: 'HR (bpm)',
-      data: hrData.map(p => p.hr),
-      borderColor: '#ef4444',
-      backgroundColor: 'rgba(239,68,68,0.08)',
-      pointRadius: 0,
-      tension: 0.2,
-      fill: true
-    }]
-  },
-  options: {
-    responsive:true,
-    plugins:{ legend:{display:false} },
-    scales:{
-      x:{ display:false },
-      y:{ title:{display:true,text:'bpm'}, min:60 }
+(function() {
+  const rawHr = {{ activity.get('hr_timeseries') | tojson }};
+  // Downsample to max 300 points
+  const MAX_PTS = 300;
+  const step = Math.max(1, Math.floor(rawHr.length / MAX_PTS));
+  const hrData = rawHr.filter((_, i) => i % step === 0);
+  new Chart(document.getElementById('hrChart'), {
+    type: 'line',
+    data: {
+      labels: hrData.map(p => (p.t / 60).toFixed(1)),
+      datasets: [{
+        label: 'HR (bpm)',
+        data: hrData.map(p => p.hr),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239,68,68,0.08)',
+        pointRadius: 0,
+        tension: 0.2,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          display: true,
+          title: { display: true, text: 'Time (min)' },
+          ticks: { maxTicksLimit: 10 }
+        },
+        y: { title: { display: true, text: 'bpm' }, min: 60 }
+      }
     }
-  }
-});
+  });
+})();
 {% endif %}
 </script>
 

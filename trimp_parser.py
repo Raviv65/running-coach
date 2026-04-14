@@ -45,15 +45,35 @@ def compute_trimp_from_data(data: dict) -> dict:
     step = max(1, len(hr_timeseries) // 200)
     hr_sampled = hr_timeseries[::step]
 
+    # Calories: Energy field is in Joules; divide by 4184 to get kcal
+    energy_j = header.get('Energy')
+    calories_kcal = round(energy_j / 4184) if energy_j is not None else None
+
+    # TSS approximation from EPOC: (EPOC / 200) * 100
+    epoc = header.get('EPOC')
+    tss = round((epoc / 200) * 100) if epoc is not None else None
+
+    # Convert hr_timeseries timestamps to seconds-from-start
+    if hr_timeseries:
+        t0 = parse_time(hr_timeseries[0]['t'])
+        hr_sampled_sec = [
+            {'t': round((parse_time(p['t']) - t0).total_seconds()), 'hr': p['hr']}
+            for p in hr_sampled
+        ]
+    else:
+        hr_sampled_sec = hr_sampled
+
     return {
         'date': act_date,
         'trimp': round(trimp, 1),
         'duration_min': round(header['Duration'] / 60, 1),
         'distance_km': round(header['Distance'] / 1000, 2),
-        'epoc': header.get('EPOC'),
+        'epoc': epoc,
         'peak_training_effect': header.get('PeakTrainingEffect'),
         'recovery_time_hrs': round(header.get('RecoveryTime', 0) / 3600, 1),
         'step_count': header.get('StepCount'),
+        'calories_kcal': calories_kcal,
+        'tss': tss,
         'avg_hr': round(sum(s['hr_bpm'] for s in hr_samples) / len(hr_samples), 1) if hr_samples else None,
         'max_hr': round(max(s['hr_bpm'] for s in hr_samples), 1) if hr_samples else None,
         'hr_zones': {
@@ -63,7 +83,7 @@ def compute_trimp_from_data(data: dict) -> dict:
             'z4': round(zones.get('Zone4Duration', 0) / 60, 1),
             'z5': round(zones.get('Zone5Duration', 0) / 60, 1),
         },
-        'hr_timeseries': hr_sampled,
+        'hr_timeseries': hr_sampled_sec,
         'title': 'Running',
         'sport': 'running',
         'source': 'suunto_json',

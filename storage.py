@@ -48,6 +48,29 @@ def save_metrics(data: dict[str, Any]) -> None:
         raise
 
 
+def save_activity_json_to_gcs(raw_bytes: bytes, activity_date_str: str) -> None:
+    """Save raw Suunto JSON upload to GCS at activities/DDMMYYYY.json.
+
+    activity_date_str should be in YYYY-MM-DD format (e.g. '2026-04-12').
+    The GCS path will be activities/12042026.json.
+    """
+    try:
+        # Convert YYYY-MM-DD -> DDMMYYYY
+        parts = activity_date_str.split("-")
+        if len(parts) == 3:
+            ddmmyyyy = parts[2] + parts[1] + parts[0]
+        else:
+            ddmmyyyy = activity_date_str
+        gcs_path = f"activities/{ddmmyyyy}.json"
+        client = _client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_string(raw_bytes, content_type="application/json")
+        logger.info("Activity JSON saved to GCS at %s", gcs_path)
+    except Exception as e:
+        logger.error("Failed to save activity JSON to GCS: %s", e)
+
+
 def restore_from_github() -> bool:
     """No-op — GCS is now the source of truth."""
     return False

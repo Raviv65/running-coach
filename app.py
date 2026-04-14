@@ -32,7 +32,7 @@ from compute import (
     daily_trimp_totals,
 )
 from email_sender import markdown_to_html, send_briefing_email
-from storage import load_metrics, restore_from_github, save_metrics
+from storage import load_metrics, restore_from_github, save_metrics, save_activity_json_to_gcs
 restore_from_github()
 from sync import (
     RunalyzeClient,
@@ -415,7 +415,8 @@ def upload_activity():
         return jsonify({"error": "no file"}), 400
 
     try:
-        data = json.load(io.TextIOWrapper(f.stream, encoding="utf-8"))
+        raw_bytes = f.stream.read()
+        data = json.loads(raw_bytes.decode("utf-8"))
         result = compute_trimp_from_data(data)
         del data
     except Exception as e:
@@ -437,6 +438,11 @@ def upload_activity():
         ]
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
         acts[day].append(result)
+        # Save raw JSON to GCS
+        try:
+            save_activity_json_to_gcs(raw_bytes, day)
+        except Exception as e:
+            logger.warning("Could not save activity JSON to GCS: %s", e)
         # Save and backup immediately
         save_metrics(db)
         try:
