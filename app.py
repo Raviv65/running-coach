@@ -118,31 +118,51 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
     if activities:
         grouped = group_activities_by_date(activities, running_only=True)
-        # Merge manually uploaded suunto-* fields into matching Runalyze activities.
-        # Fields from the Suunto JSON (EPOC, calories, segments, hr_timeseries, tss)
-        # are not available from Runalyze, so we carry them over when the same run
-        # appears in both (matched by day + duration within 1 min).
-        # If no Runalyze match exists yet, keep the suunto-* entry as-is.
-        _SUUNTO_FIELDS = {"epoc", "calories_kcal", "tss", "segments", "hr_timeseries"}
+        # Preserve Suunto-derived fields across pipeline runs.
+        # Runalyze never returns: epoc, calories_kcal, tss (approx), segments,
+        # hr_timeseries, avg_hr, max_hr, peak_training_effect, recovery_time_hrs,
+        # step_count. Carry them forward from the existing db into the fresh
+        # Runalyze snapshot, matching by activity ID (exact) or by day+duration
+        # (for suunto-* entries not yet in Runalyze).
+        _PRESERVE = {
+            "epoc", "calories_kcal", "tss", "segments", "hr_timeseries",
+            "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
+            "step_count",
+        }
         existing_acts = db.get("activities", {})
+        # Build a lookup of existing Runalyze activities by ID for fast merge
+        existing_by_id: dict = {}
+        for day_acts in existing_acts.values():
+            for a in day_acts:
+                aid = str(a.get("id", ""))
+                if aid and not aid.startswith("suunto-"):
+                    existing_by_id[aid] = a
+
+        for day, runalyze_day in grouped.items():
+            for r in runalyze_day:
+                rid = str(r.get("id", ""))
+                old = existing_by_id.get(rid)
+                if old:
+                    for field in _PRESERVE:
+                        if field in old and field not in r:
+                            r[field] = old[field]
+
+        # Handle suunto-* entries: merge into Runalyze match or keep standalone
         for day, day_acts in existing_acts.items():
-            manual = [a for a in day_acts if str(a.get("id", "")).startswith("suunto-")]
-            if not manual:
-                continue
-            runalyze_day = grouped.get(day, [])
-            for m in manual:
+            for m in day_acts:
+                if not str(m.get("id", "")).startswith("suunto-"):
+                    continue
+                runalyze_day = grouped.get(day, [])
                 match = next(
                     (r for r in runalyze_day
                      if abs(r.get("duration_min", 0) - m.get("duration_min", 0)) < 1),
                     None,
                 )
                 if match:
-                    # Runalyze activity now exists — merge Suunto-only fields in
-                    for field in _SUUNTO_FIELDS:
+                    for field in _PRESERVE:
                         if field in m and field not in match:
                             match[field] = m[field]
                 else:
-                    # Not in Runalyze yet — keep the suunto-* entry
                     grouped.setdefault(day, []).append(m)
         db["activities"] = grouped
     else:
