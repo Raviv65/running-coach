@@ -492,6 +492,23 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.route('/run-pipeline', methods=['POST'])
+def run_pipeline_webhook():
+    # Verify secret token to prevent unauthorized calls
+    secret = os.environ.get('PIPELINE_SECRET', '')
+    auth = request.headers.get('Authorization', '')
+    if secret and auth != f'Bearer {secret}':
+        return jsonify({'error': 'unauthorized'}), 401
+
+    import threading
+    threading.Thread(
+        target=run_daily_pipeline,
+        kwargs={'send_email_now': True},
+        daemon=True
+    ).start()
+    return jsonify({'ok': True, 'message': 'Pipeline started'})
+
+
 @app.route('/debug-token')
 def debug_token():
     import os
