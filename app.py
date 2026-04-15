@@ -211,12 +211,14 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
     # Preserve Excel-seeded CTL/ATL/TSB as ground truth.
     # seed_historical.py records the last Excel date in meta["last_excel_seed_date"].
-    # Only compute forward from that boundary; don't touch earlier dates.
+    # The stored CTL/ATL for that date are the MORNING (pre-run) values from Suunto,
+    # so we include the seed date itself in the forward series so that day's TRIMP
+    # is applied before propagating forward.
     last_excel_date = meta.get("last_excel_seed_date")
     last_excel_m = metrics.get(last_excel_date, {}) if last_excel_date else {}
     if last_excel_date and last_excel_m.get("ctl") is not None:
         last_seed_d = date.fromisoformat(last_excel_date)
-        fwd_start = last_seed_d + timedelta(days=1)
+        fwd_start = last_seed_d          # include seed date so its TRIMP is applied
         fwd_expanded = expand_calendar(daily_trimp, fwd_start, today_d)
         fwd_series = ctl_atl_tsb_series(
             fwd_expanded,
