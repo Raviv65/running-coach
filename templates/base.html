@@ -26,20 +26,47 @@
   function syncNow() {
     const btn = document.getElementById('sync-btn');
     btn.disabled = true;
-    btn.textContent = '⏳...';
-    fetch('/sync-now', { method: 'POST' })
+
+    // Capture current last_sync before we start, so we can detect when it changes
+    let prevSync = null;
+    fetch('/api/last-sync')
       .then(r => r.json())
-      .then(() => {
-        btn.textContent = '✅ Done';
-        setTimeout(() => {
-          btn.textContent = '🔄 Sync';
-          btn.disabled = false;
-          location.reload();
-        }, 30000);
-      })
-      .catch(() => {
-        btn.textContent = '🔄 Sync';
-        btn.disabled = false;
+      .then(d => { prevSync = d.last_sync; })
+      .catch(() => {})
+      .finally(() => {
+        btn.textContent = '⏳ Syncing…';
+        fetch('/sync-now', { method: 'POST' }).catch(() => {});
+
+        // Poll every 8s for up to 3 minutes
+        let elapsed = 0;
+        const maxWait = 180;
+        const interval = setInterval(() => {
+          elapsed += 8;
+          const remaining = maxWait - elapsed;
+          btn.textContent = `⏳ ${remaining}s…`;
+
+          fetch('/api/last-sync')
+            .then(r => r.json())
+            .then(d => {
+              if (d.last_sync && d.last_sync !== prevSync) {
+                clearInterval(interval);
+                btn.textContent = '✅ Done';
+                setTimeout(() => location.reload(), 800);
+              } else if (elapsed >= maxWait) {
+                clearInterval(interval);
+                btn.textContent = '🔄 Sync';
+                btn.disabled = false;
+                location.reload();
+              }
+            })
+            .catch(() => {
+              if (elapsed >= maxWait) {
+                clearInterval(interval);
+                btn.textContent = '🔄 Sync';
+                btn.disabled = false;
+              }
+            });
+        }, 8000);
       });
   }
   </script>

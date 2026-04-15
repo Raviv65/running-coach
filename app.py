@@ -748,6 +748,12 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.get("/api/last-sync")
+def api_last_sync():
+    db = load_metrics()
+    return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
+
+
 @app.route('/run-pipeline', methods=['POST'])
 def run_pipeline_webhook():
     # Verify secret token to prevent unauthorized calls

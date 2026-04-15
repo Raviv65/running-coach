@@ -33,19 +33,22 @@ def load_metrics() -> dict[str, Any]:
         return default_structure()
 
 
-def save_metrics(data: dict[str, Any]) -> None:
-    try:
-        client = _client()
-        bucket = client.bucket(GCS_BUCKET)
-        blob = bucket.blob(GCS_OBJECT)
-        blob.upload_from_string(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            content_type="application/json"
-        )
-        logger.info("metrics.json saved to GCS")
-    except Exception as e:
-        logger.error("GCS save failed: %s", e)
-        raise
+def save_metrics(data: dict[str, Any], retries: int = 3) -> None:
+    payload = json.dumps(data, indent=2, ensure_ascii=False)
+    last_exc = None
+    for attempt in range(1, retries + 1):
+        try:
+            client = _client()
+            bucket = client.bucket(GCS_BUCKET)
+            blob = bucket.blob(GCS_OBJECT)
+            blob.upload_from_string(payload, content_type="application/json")
+            logger.info("metrics.json saved to GCS (attempt %d)", attempt)
+            return
+        except Exception as e:
+            last_exc = e
+            logger.warning("GCS save attempt %d/%d failed: %s", attempt, retries, e)
+    logger.error("GCS save failed after %d attempts: %s", retries, last_exc)
+    raise last_exc
 
 
 # Suunto ActivityType codes for indoor/treadmill activities.
