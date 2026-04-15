@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -18,19 +19,29 @@ def _client():
     return storage.Client()
 
 
-def load_metrics() -> dict[str, Any]:
-    try:
-        client = _client()
-        bucket = client.bucket(GCS_BUCKET)
-        blob = bucket.blob(GCS_OBJECT)
-        if not blob.exists():
-            logger.warning("metrics.json not found in GCS; returning default")
-            return default_structure()
-        content = blob.download_as_text(encoding="utf-8")
-        return json.loads(content)
-    except Exception as e:
-        logger.error("GCS load failed: %s; returning default", e)
-        return default_structure()
+def load_metrics(retries: int = 4, initial_delay: float = 5.0) -> dict[str, Any]:
+    """Load metrics.json from GCS with retries and back-off for cold-start SSL issues."""
+    delay = initial_delay
+    last_exc = None
+    for attempt in range(1, retries + 1):
+        try:
+            client = _client()
+            bucket = client.bucket(GCS_BUCKET)
+            blob = bucket.blob(GCS_OBJECT)
+            if not blob.exists():
+                logger.warning("metrics.json not found in GCS; returning default")
+                return default_structure()
+            content = blob.download_as_text(encoding="utf-8")
+            return json.loads(content)
+        except Exception as e:
+            last_exc = e
+            logger.warning("GCS load attempt %d/%d failed: %s", attempt, retries, e)
+            if attempt < retries:
+                logger.info("Retrying GCS load in %.0fs…", delay)
+                time.sleep(delay)
+                delay = min(delay * 2, 30)
+    logger.error("GCS load failed after %d attempts: %s; returning default", retries, last_exc)
+    return default_structure()
 
 
 def save_metrics(data: dict[str, Any], retries: int = 3) -> None:

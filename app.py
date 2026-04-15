@@ -294,7 +294,11 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         "created_utc": datetime.now(timezone.utc).isoformat(),
     }
 
-    save_metrics(db)
+    # Save to GCS — don't let a transient network failure prevent the email from sending.
+    try:
+        save_metrics(db)
+    except Exception as e:
+        logger.error("GCS save failed (pipeline will still send email if requested): %s", e)
 
     try:
         if os.environ.get("GITHUB_TOKEN") and os.environ.get("GITHUB_REPO"):
@@ -309,7 +313,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         except Exception:
             logger.exception("Email send failed")
 
-    return {"ok": True, "today": today}
+    return {"ok": True, "today": today, "briefing_text": text}
 
 
 def scheduled_pipeline() -> None:
@@ -329,14 +333,13 @@ def scheduled_email() -> None:
         md = b.get("markdown")
 
         if not md:
-            logger.info("No briefing for %s at 05:30; retrying pipeline.", today)
-            run_daily_pipeline(send_email_now=False)
-            db = load_metrics()
-            b = (db.get("briefings") or {}).get(today) or {}
-            md = b.get("markdown")
-
-        if not md:
-            logger.warning("Briefing still missing after retry; skipping email.")
+            # Pipeline likely failed to save at 05:00 due to cold-start SSL issues.
+            # Re-run with send_email_now=True so email is sent even if GCS save fails again.
+            logger.info("No briefing for %s at 05:30; re-running pipeline with email.", today)
+            result = run_daily_pipeline(send_email_now=True)
+            # Email already sent inside pipeline if it succeeded — we're done.
+            if result.get("briefing_text"):
+                logger.info("scheduled_email: pipeline re-run sent email directly.")
             return
 
         subj = f"Running briefing — {today}"
