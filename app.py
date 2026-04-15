@@ -374,15 +374,27 @@ def index():
     b = (db.get("briefings") or {}).get(today) or {}
     athlete = (db.get("meta") or {}).get("athlete") or {}
     # Build 7-day history for charts
+    all_metrics = db.get("metrics") or {}
     chart_history = []
+    today_d = date.fromisoformat(today)
     for i in range(6, -1, -1):
-        d = (date.fromisoformat(today) - timedelta(days=i)).isoformat()
-        md = (db.get("metrics") or {}).get(d, {})
+        d = (today_d - timedelta(days=i)).isoformat()
+        md = all_metrics.get(d, {})
+        # Rolling 7-day HRV average ending on this day
+        hrv_vals = [
+            float(v)
+            for j in range(7)
+            if (v := (all_metrics.get(
+                (today_d - timedelta(days=i + j)).isoformat()
+            ) or {}).get("hrv_last")) is not None
+        ]
+        hrv_7d = round(sum(hrv_vals) / len(hrv_vals), 1) if hrv_vals else None
         chart_history.append({
             "date": d,
             "ctl": md.get("ctl"),
             "atl": md.get("atl"),
             "hrv": md.get("hrv_last"),
+            "hrv_7d_avg": hrv_7d,
         })
 
     # Derive day status label
