@@ -71,7 +71,14 @@
           {% if sq is not none %}{{ sq | int }}%{% else %}—{% endif %}
         </div>
       </div>
-      <div class="card mcard" style="visibility:hidden;"></div>
+      <div class="card mcard">
+        <div class="label">HRV Today</div>
+        {% set hrv_today = metrics.get("hrv_last") %}
+        {% set hrv_avg   = metrics.get("hrv_7d_avg") %}
+        <div class="value" style="color:{% if hrv_today is not none and hrv_avg is not none %}{% if hrv_today >= hrv_avg %}#15803d{% else %}#dc2626{% endif %}{% endif %}">
+          {{ hrv_today if hrv_today is not none else "—" }}
+        </div>
+      </div>
       <div class="card mcard" style="visibility:hidden;"></div>
       <div class="card mcard" style="visibility:hidden;"></div>
     </div>
