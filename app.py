@@ -209,22 +209,41 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         seed_atl=float(seed_atl) if seed_atl is not None else None,
     )
 
-    # Preserve Excel-seeded CTL/ATL/TSB as ground truth.
-    # seed_historical.py records the last Excel date in meta["last_excel_seed_date"].
-    # The stored CTL/ATL for that date are the MORNING (pre-run) values from Suunto,
-    # so we include the seed date itself in the forward series so that day's TRIMP
-    # is applied before propagating forward.
+    # Preserve morning (pre-run) Suunto seed as ground truth.
+    # Morning seeds live in meta["morning_seed_ctl/atl"] — never overwritten by the pipeline.
+    # We apply the seed date's own TRIMP once to get end-of-day state, then propagate forward
+    # from seed_date+1. This keeps the computation idempotent across pipeline runs.
     last_excel_date = meta.get("last_excel_seed_date")
-    last_excel_m = metrics.get(last_excel_date, {}) if last_excel_date else {}
-    if last_excel_date and last_excel_m.get("ctl") is not None:
+    morning_ctl = meta.get("morning_seed_ctl")
+    morning_atl = meta.get("morning_seed_atl")
+    # Fall back to whatever is stored in metrics for the seed date (legacy support)
+    if morning_ctl is None or morning_atl is None:
+        _m = metrics.get(last_excel_date, {}) if last_excel_date else {}
+        morning_ctl = _m.get("ctl")
+        morning_atl = _m.get("atl")
+
+    if last_excel_date and morning_ctl is not None and morning_atl is not None:
         last_seed_d = date.fromisoformat(last_excel_date)
-        fwd_start = last_seed_d          # include seed date so its TRIMP is applied
+        morning_ctl = float(morning_ctl)
+        morning_atl = float(morning_atl)
+
+        # Apply seed date's TRIMP once to get the true end-of-day state
+        seed_trimp = {last_excel_date: float(daily_trimp.get(last_excel_date, 0.0))}
+        eod = ctl_atl_tsb_series(seed_trimp, seed_ctl=morning_ctl, seed_atl=morning_atl)
+        eod_ctl = eod[last_excel_date]["ctl"]
+        eod_atl = eod[last_excel_date]["atl"]
+
+        # Write corrected end-of-day values for the seed date into metrics
+        metrics.setdefault(last_excel_date, {}).update({
+            "ctl": round(eod_ctl, 2),
+            "atl": round(eod_atl, 2),
+            "tsb": round(morning_ctl - morning_atl, 2),
+        })
+
+        # Compute forward from the day after seed date using eod as new seed
+        fwd_start = last_seed_d + timedelta(days=1)
         fwd_expanded = expand_calendar(daily_trimp, fwd_start, today_d)
-        fwd_series = ctl_atl_tsb_series(
-            fwd_expanded,
-            seed_ctl=float(last_excel_m["ctl"]),
-            seed_atl=float(last_excel_m["atl"]),
-        )
+        fwd_series = ctl_atl_tsb_series(fwd_expanded, seed_ctl=eod_ctl, seed_atl=eod_atl)
         enrich_metrics_history(metrics, fwd_series)
         series = fwd_series  # use forward series for today's ramp/TSB lookups below
     else:
