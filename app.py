@@ -848,6 +848,63 @@ def recompute_trimp():
 
 
 
+@app.route("/debug-load")
+def debug_load():
+    """Show day-by-day TSS source and CTL/ATL trace for the last 60 days."""
+    db = load_metrics()
+    meta = db.get("meta") or {}
+    acts = db.get("activities") or {}
+    today_d = date.fromisoformat(utc_today_iso())
+    start_d = today_d - timedelta(days=59)
+
+    rows = []
+    ctl = float(meta.get("morning_seed_ctl") or 0)
+    atl = float(meta.get("morning_seed_atl") or 0)
+    seed_date = meta.get("last_excel_seed_date") or ""
+    a_c = math.exp(-1.0 / 42.0)
+    b_c = 1.0 - a_c
+    a_a = math.exp(-1.0 / 7.0)
+    b_a = 1.0 - a_a
+
+    # Re-run computation day by day so we can capture TSS source per day
+    cur = start_d
+    while cur <= today_d:
+        ds = cur.isoformat()
+        day_acts = acts.get(ds, [])
+        tss_val = 0.0
+        tss_source = "rest"
+        for a in day_acts:
+            t = a.get("suunto_tss")
+            if t is not None:
+                tss_val += float(t)
+                tss_source = "fit"
+            else:
+                t2 = a.get("trimp") or a.get("tss")
+                if t2 is not None:
+                    tss_val += float(t2)
+                    tss_source = "runalyze" if tss_source == "rest" else tss_source
+        tsb = ctl - atl
+        ctl = ctl * a_c + tss_val * b_c
+        atl = atl * a_a + tss_val * b_a
+        rows.append({
+            "date": ds,
+            "tss": round(tss_val, 1),
+            "source": tss_source,
+            "ctl": round(ctl, 2),
+            "atl": round(atl, 2),
+            "tsb": round(tsb, 2),
+            "is_seed": ds == seed_date,
+        })
+        cur += timedelta(days=1)
+
+    return jsonify({
+        "seed_date": seed_date,
+        "morning_ctl": meta.get("morning_seed_ctl"),
+        "morning_atl": meta.get("morning_seed_atl"),
+        "days": rows,
+    })
+
+
 if __name__ == "__main__":
     init_scheduler()
     port = int(os.environ.get("PORT", "5000"))
