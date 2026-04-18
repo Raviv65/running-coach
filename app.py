@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import math
 import os
 import tempfile
 import traceback
@@ -269,6 +270,24 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         m_today["atl"] = round(atl_v, 2)
     if tsb_v is not None:
         m_today["tsb"] = round(tsb_v, 2)
+
+    # Auto-advance seed to today so future pipeline runs don't recompute from a fixed old date.
+    # Back-calculate morning CTL/ATL from today's end-of-day values so the next run is idempotent.
+    if ctl_v is not None:
+        _a_c = math.exp(-1.0 / 42.0)
+        _b_c = 1.0 - _a_c
+        _a_a = math.exp(-1.0 / 7.0)
+        _b_a = 1.0 - _a_a
+        today_tss = float(daily_trimp.get(today, 0.0))
+        new_morning_ctl = (float(ctl_v) - today_tss * _b_c) / _a_c
+        new_morning_atl = (float(atl_v) - today_tss * _b_a) / _a_a
+        old_seed = meta.get("last_excel_seed_date") or ""
+        if today >= old_seed:
+            meta["last_excel_seed_date"] = today
+            meta["morning_seed_ctl"] = round(new_morning_ctl, 4)
+            meta["morning_seed_atl"] = round(new_morning_atl, 4)
+            logger.info("Auto-advanced seed to %s (morning_ctl=%.2f morning_atl=%.2f)",
+                        today, new_morning_ctl, new_morning_atl)
 
     rr = ramp_rate_ctl(series, 7)
     m_today["ramp_rate"] = round(rr, 3) if rr is not None else None
