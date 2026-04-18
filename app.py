@@ -750,6 +750,44 @@ def api_last_sync():
     return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
 
 
+@app.route("/set-seeds", methods=["POST"])
+def set_seeds():
+    """
+    Calibrate CTL/ATL from known-good values (e.g. Suunto app).
+    Body: { "date": "YYYY-MM-DD", "ctl": <float>, "atl": <float>, "tsb": <float>, "trimp": <float|null> }
+    For a rest day (trimp=0 or null): morning seeds are back-calculated from end-of-day ctl/atl.
+    """
+    body = request.get_json(force=True) or {}
+    seed_date = body.get("date") or utc_today_iso()
+    ctl = float(body["ctl"])
+    atl = float(body["atl"])
+    tsb = float(body.get("tsb", ctl - atl))
+    trimp = float(body["trimp"]) if body.get("trimp") else 0.0
+
+    import math
+    decay_ctl = math.exp(-1.0 / 42.0)
+    decay_atl = math.exp(-1.0 / 7.0)
+    load_ctl = 1.0 - decay_ctl
+    load_atl = 1.0 - decay_atl
+
+    # Back-calculate morning seeds from end-of-day observed values
+    # eod_ctl = morning_ctl * decay_ctl + trimp * load_ctl  → morning_ctl = (eod_ctl - trimp*load_ctl) / decay_ctl
+    morning_ctl = (ctl - trimp * load_ctl) / decay_ctl
+    morning_atl = (atl - trimp * load_atl) / decay_atl
+
+    db = load_metrics()
+    meta = db.setdefault("meta", {})
+    meta["last_excel_seed_date"] = seed_date
+    meta["morning_seed_ctl"] = round(morning_ctl, 4)
+    meta["morning_seed_atl"] = round(morning_atl, 4)
+    save_metrics(db)
+    logger.info("Seeds updated: date=%s morning_ctl=%.2f morning_atl=%.2f (from ctl=%.1f atl=%.1f tsb=%.1f trimp=%.1f)",
+                seed_date, morning_ctl, morning_atl, ctl, atl, tsb, trimp)
+    return jsonify({"ok": True, "seed_date": seed_date,
+                    "morning_ctl": round(morning_ctl, 2),
+                    "morning_atl": round(morning_atl, 2)})
+
+
 @app.route("/recompute-trimp", methods=["POST"])
 def recompute_trimp():
     """Re-read all stored Suunto JSONs from GCS and recompute TRIMP with current athlete HR settings."""
