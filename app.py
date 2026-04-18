@@ -157,7 +157,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
                 old = existing_by_id.get(rid)
                 if old:
                     for field in _PRESERVE:
-                        if field in old and field not in r:
+                        if old.get(field) is not None and r.get(field) is None:
                             r[field] = old[field]
 
         # Handle suunto-* entries: merge into Runalyze match or keep standalone
@@ -173,7 +173,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
                 )
                 if match:
                     for field in _PRESERVE:
-                        if field in m and field not in match:
+                        if m.get(field) is not None and match.get(field) is None:
                             match[field] = m[field]
                 else:
                     grouped.setdefault(day, []).append(m)
