@@ -221,6 +221,11 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         _m = metrics.get(last_excel_date, {}) if last_excel_date else {}
         morning_ctl = _m.get("ctl")
         morning_atl = _m.get("atl")
+        # Pin in meta so subsequent runs don't read the overwritten end-of-day value.
+        if morning_ctl is not None:
+            meta["morning_seed_ctl"] = morning_ctl
+        if morning_atl is not None:
+            meta["morning_seed_atl"] = morning_atl
 
     if last_excel_date and morning_ctl is not None and morning_atl is not None:
         last_seed_d = date.fromisoformat(last_excel_date)
