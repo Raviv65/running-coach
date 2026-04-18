@@ -1,20 +1,21 @@
 import json, math
 from datetime import datetime
 
-HR_MAX = 159
-HR_REST = 60
+# Defaults — overridden by athlete profile (meta.athlete.hr_max / hr_rest)
+HR_MAX_DEFAULT = 160
+HR_REST_DEFAULT = 54
 
 def parse_time(t):
     for tz in ['+03:00', '+02:00', '+01:00', '+00:00']:
         t = t.replace(tz, tz.replace(':', ''))
     return datetime.strptime(t, '%Y-%m-%dT%H:%M:%S.%f%z')
 
-def compute_trimp_from_file(path: str) -> dict:
+def compute_trimp_from_file(path: str, hr_max: int = HR_MAX_DEFAULT, hr_rest: int = HR_REST_DEFAULT) -> dict:
     with open(path) as f:
         data = json.load(f)
-    return compute_trimp_from_data(data)
+    return compute_trimp_from_data(data, hr_max=hr_max, hr_rest=hr_rest)
 
-def compute_trimp_from_data(data: dict) -> dict:
+def compute_trimp_from_data(data: dict, hr_max: int = HR_MAX_DEFAULT, hr_rest: int = HR_REST_DEFAULT) -> dict:
     header = data['DeviceLog']['Header']
     samples = data['DeviceLog']['Samples']
 
@@ -34,9 +35,10 @@ def compute_trimp_from_data(data: dict) -> dict:
         if dt_min > 0.1:
             dt_min = 1/60
         hr_timeseries.append({'t': s['time'], 'hr': round(hr, 1)})
-        if hr >= HR_REST:
-            hrr = max(0, min(1, (hr - HR_REST) / (HR_MAX - HR_REST)))
-            trimp += dt_min * hrr * 0.64 * math.exp(1.92 * hrr)
+        if hr >= hr_rest:
+            hrr = max(0, min(1, (hr - hr_rest) / (hr_max - hr_rest)))
+            # Male Banister TRIMP coefficients (0.86, 1.67)
+            trimp += dt_min * hrr * 0.86 * math.exp(1.67 * hrr)
 
     zones = header.get('HrZones', {})
     act_date = header['DateTime'][:10]

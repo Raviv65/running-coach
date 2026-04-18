@@ -107,6 +107,8 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
             "goal": "10 km in 60 min",
             "watch": "Suunto Vertical",
             "threshold_hr": 160,
+            "hr_max": 160,
+            "hr_rest": 54,
         },
     )
     metrics = db.setdefault("metrics", {})
@@ -483,15 +485,19 @@ def upload_activity():
     if not f:
         return jsonify({"error": "no file"}), 400
 
+    db = load_metrics()
+    athlete = (db.get("meta") or {}).get("athlete") or {}
+    hr_max = int(athlete.get("hr_max", 160))
+    hr_rest = int(athlete.get("hr_rest", 54))
+
     try:
         raw_bytes = f.stream.read()
         data = json.loads(raw_bytes.decode("utf-8"))
-        result = compute_trimp_from_data(data)
+        result = compute_trimp_from_data(data, hr_max=hr_max, hr_rest=hr_rest)
         del data
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-    db = load_metrics()
     acts = db.setdefault("activities", {})
     day = result["date"]
     existing = acts.get(day, [])
@@ -546,9 +552,9 @@ def activity_detail(activity_id):
     # Enrich with Suunto JSON from GCS if available for this date
     gcs_data = load_activity_json_from_gcs(activity.get("date", ""))
     if gcs_data:
-        from trimp_parser import compute_trimp_from_data
+        _ath = (db.get("meta") or {}).get("athlete") or {}
         try:
-            parsed = compute_trimp_from_data(gcs_data)
+            parsed = compute_trimp_from_data(gcs_data, hr_max=int(_ath.get("hr_max", 160)), hr_rest=int(_ath.get("hr_rest", 54)))
             # Overlay Suunto-derived fields — GCS JSON is source of truth for these
             for field in ("hr_timeseries", "epoc", "calories_kcal", "tss",
                           "avg_hr", "max_hr", "peak_training_effect",
@@ -693,10 +699,10 @@ def generate_activity_debrief(activity_id):
     # Enrich with Suunto GCS JSON
     act_copy = dict(activity_row)
     gcs_data = load_activity_json_from_gcs(act_copy.get("date", ""))
+    athlete = (db.get("meta") or {}).get("athlete") or {}
     if gcs_data:
         try:
-            from trimp_parser import compute_trimp_from_data as _ctfd
-            parsed = _ctfd(gcs_data)
+            parsed = compute_trimp_from_data(gcs_data, hr_max=int(athlete.get("hr_max", 160)), hr_rest=int(athlete.get("hr_rest", 54)))
             for field in ("hr_timeseries", "epoc", "calories_kcal", "tss",
                           "avg_hr", "max_hr", "peak_training_effect",
                           "recovery_time_hrs", "step_count"):
@@ -704,8 +710,6 @@ def generate_activity_debrief(activity_id):
                     act_copy[field] = parsed[field]
         except Exception as e:
             logger.warning("Could not enrich activity for debrief: %s", e)
-
-    athlete = (db.get("meta") or {}).get("athlete") or {}
     prompt = _build_activity_debrief_prompt(act_copy, athlete)
 
     try:
@@ -744,6 +748,34 @@ def healthz():
 def api_last_sync():
     db = load_metrics()
     return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
+
+
+@app.route("/recompute-trimp", methods=["POST"])
+def recompute_trimp():
+    """Re-read all stored Suunto JSONs from GCS and recompute TRIMP with current athlete HR settings."""
+    db = load_metrics()
+    athlete = (db.get("meta") or {}).get("athlete") or {}
+    hr_max = int(athlete.get("hr_max", 160))
+    hr_rest = int(athlete.get("hr_rest", 54))
+    acts = db.get("activities", {})
+    updated = 0
+    for day, day_acts in acts.items():
+        gcs_data = load_activity_json_from_gcs(day)
+        if not gcs_data:
+            continue
+        try:
+            parsed = compute_trimp_from_data(gcs_data, hr_max=hr_max, hr_rest=hr_rest)
+            new_trimp = parsed["trimp"]
+        except Exception as e:
+            logger.warning("recompute_trimp: failed for %s: %s", day, e)
+            continue
+        for a in day_acts:
+            if str(a.get("id", "")).startswith("suunto-"):
+                a["trimp"] = new_trimp
+                updated += 1
+    save_metrics(db)
+    logger.info("recompute_trimp: updated %d activities (hr_max=%d, hr_rest=%d)", updated, hr_max, hr_rest)
+    return jsonify({"ok": True, "updated": updated, "hr_max": hr_max, "hr_rest": hr_rest})
 
 
 
