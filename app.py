@@ -139,7 +139,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         _PRESERVE = {
             "epoc", "calories_kcal", "tss", "suunto_tss", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
-            "step_count", "debrief_html", "debrief_generated_utc",
+            "step_count", "debrief_html", "debrief_generated_utc", "source",
         }
         existing_acts = db.get("activities", {})
         # Build a lookup of existing Runalyze activities by ID for fast merge
@@ -477,8 +477,8 @@ def activity_log():
             src = a.get("source", "")
             rows.append({
                 "date": d,
-                "has_json": d in json_dates and src != "suunto_fit",
-                "has_fit": src == "suunto_fit",
+                "has_fit": src == "suunto_fit" or a.get("hr_timeseries") is not None,
+                "has_json": d in json_dates and src != "suunto_fit" and a.get("hr_timeseries") is None,
                 **a,
             })
     return render_template("activity.html", rows=rows)
