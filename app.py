@@ -474,7 +474,13 @@ def activity_log():
     rows: list[dict[str, Any]] = []
     for d, acts in sorted((db.get("activities") or {}).items(), reverse=True):
         for a in acts:
-            rows.append({"date": d, "has_json": d in json_dates, **a})
+            src = a.get("source", "")
+            rows.append({
+                "date": d,
+                "has_json": d in json_dates and src != "suunto_fit",
+                "has_fit": src == "suunto_fit",
+                **a,
+            })
     return render_template("activity.html", rows=rows)
 
 
@@ -518,11 +524,12 @@ def upload_activity():
         ]
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
         acts[day].append(result)
-        # Save raw JSON to GCS
-        try:
-            save_activity_json_to_gcs(raw_bytes, day)
-        except Exception as e:
-            logger.warning("Could not save activity JSON to GCS: %s", e)
+        # Only save raw bytes to GCS for JSON files (FIT is binary, not useful for re-parsing)
+        if not filename.endswith(".fit"):
+            try:
+                save_activity_json_to_gcs(raw_bytes, day)
+            except Exception as e:
+                logger.warning("Could not save activity JSON to GCS: %s", e)
         save_metrics(db)
 
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})

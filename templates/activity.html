@@ -5,7 +5,7 @@
   <h1 style="margin:0;">Activity Log</h1>
   <a href="{{ url_for('upload_activity') }}" class="btn-upload">+ Upload Activity</a>
 </div>
-<p class="sub">Synced from Runalyze + Suunto JSON uploads.</p>
+<p class="sub">Synced from Runalyze + Suunto FIT/JSON uploads.</p>
 <div class="card" style="overflow-x:auto;">
   <table>
     <thead>
@@ -24,9 +24,14 @@
     </thead>
     <tbody>
       {% for row in rows %}
-      <tr {% if row.get('has_json') %}class="clickable" onclick="window.location='/activity/{{ row.get('id') }}'"{% endif %}>
+      {% set clickable = row.get('has_json') or row.get('has_fit') %}
+      <tr {% if clickable %}class="clickable" onclick="window.location='/activity/{{ row.get('id') }}'"{% endif %}>
         <td class="num">{{ row.date | datefmt }}</td>
-        <td>{{ row.title or '—' }}{% if row.get('has_json') %} <span style="font-size:0.75rem;background:rgba(37,99,235,0.1);color:#2563eb;padding:2px 6px;border-radius:4px;margin-left:4px;">📄 JSON</span>{% endif %}</td>
+        <td>{{ row.title or '—' }}
+          {% if row.get('has_fit') %}<span style="font-size:0.75rem;background:rgba(22,163,74,0.1);color:#16a34a;padding:2px 6px;border-radius:4px;margin-left:4px;">📊 FIT</span>
+          {% elif row.get('has_json') %}<span style="font-size:0.75rem;background:rgba(37,99,235,0.1);color:#2563eb;padding:2px 6px;border-radius:4px;margin-left:4px;">📄 JSON</span>
+          {% endif %}
+        </td>
         <td>{{ row.sport or '—' }}</td>
         <td class="num">{{ "%.1f"|format(row.get("trimp")) if row.get("trimp") is not none else "—" }}</td>
         <td class="num">{{ "%.2f"|format(row.get("distance_km")) if row.get("distance_km") is not none else "—" }}</td>
@@ -34,7 +39,7 @@
         <td class="num">{{ "%.0f"|format(row.get("avg_hr")) if row.get("avg_hr") is not none else "—" }}</td>
         <td class="num">{{ row.get("peak_training_effect") or "—" }}</td>
         <td class="num">{{ row.get("calories_kcal")|string + " kcal" if row.get("calories_kcal") is not none else "—" }}</td>
-        <td class="num">{{ row.get("tss") or "—" }}</td>
+        <td class="num">{{ row.get("suunto_tss") or row.get("tss") or "—" }}</td>
       </tr>
       {% else %}
       <tr><td colspan="10" class="sub">No activities yet.</td></tr>
