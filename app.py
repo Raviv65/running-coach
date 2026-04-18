@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import tempfile
-import threading
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -20,7 +19,6 @@ from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
-from backup import push_metrics_backup
 from compute import (
     ac_ratio,
     build_trimp_history,
@@ -32,8 +30,7 @@ from compute import (
     daily_trimp_totals,
 )
 from email_sender import markdown_to_html, send_briefing_email
-from storage import load_metrics, restore_from_github, save_metrics, save_activity_json_to_gcs, load_activity_json_from_gcs, list_activity_json_dates
-restore_from_github()
+from storage import load_metrics, save_metrics, save_activity_json_to_gcs, load_activity_json_from_gcs, list_activity_json_dates
 from sync import (
     RunalyzeClient,
     extract_daily_wellness,
@@ -100,7 +97,7 @@ def _activities_from_db(db: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 
 def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
-    """Sync Runalyze → compute → Claude → save → GitHub backup. Optionally send email."""
+    """Sync Runalyze → compute → Claude → save to GCS. Optionally send email."""
     db = load_metrics()
     meta = db.setdefault("meta", {})
     athlete = meta.setdefault(
@@ -319,12 +316,6 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     except Exception as e:
         logger.error("GCS save failed (pipeline will still send email if requested): %s", e)
 
-    try:
-        if os.environ.get("GITHUB_TOKEN") and os.environ.get("GITHUB_REPO"):
-            push_metrics_backup(db)
-    except Exception:
-        logger.exception("GitHub backup failed")
-
     if send_email_now:
         try:
             subj = f"Running briefing — {today}"
@@ -337,7 +328,6 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
 def scheduled_pipeline() -> None:
     try:
-        restore_from_github()
         run_daily_pipeline(send_email_now=False)
     except Exception:
         logger.error("scheduled_pipeline failed:\n%s", traceback.format_exc())
@@ -345,20 +335,14 @@ def scheduled_pipeline() -> None:
 
 def scheduled_email() -> None:
     try:
-        restore_from_github()
         db = load_metrics()
         today = utc_today_iso()
         b = (db.get("briefings") or {}).get(today) or {}
         md = b.get("markdown")
 
         if not md:
-            # Pipeline likely failed to save at 05:00 due to cold-start SSL issues.
-            # Re-run with send_email_now=True so email is sent even if GCS save fails again.
             logger.info("No briefing for %s at 05:30; re-running pipeline with email.", today)
-            result = run_daily_pipeline(send_email_now=True)
-            # Email already sent inside pipeline if it succeeded — we're done.
-            if result.get("briefing_text"):
-                logger.info("scheduled_email: pipeline re-run sent email directly.")
+            run_daily_pipeline(send_email_now=True)
             return
 
         subj = f"Running briefing — {today}"
@@ -528,20 +512,7 @@ def upload_activity():
             save_activity_json_to_gcs(raw_bytes, day)
         except Exception as e:
             logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Save and backup immediately
         save_metrics(db)
-        try:
-            from backup import push_metrics_backup
-            push_metrics_backup(db)
-        except Exception as e:
-            logger.warning("Backup after upload failed: %s", e)
-
-        # Recompute CTL/ATL/TSB in background
-        threading.Thread(
-            target=run_daily_pipeline,
-            kwargs={"send_email_now": False},
-            daemon=True,
-        ).start()
 
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
 
@@ -555,11 +526,6 @@ def save_segments(activity_id):
             if str(a.get("id", "")) == activity_id:
                 a["segments"] = request.json.get("segments", [])
                 save_metrics(db)
-                try:
-                    from backup import push_metrics_backup
-                    push_metrics_backup(db)
-                except Exception as e:
-                    logger.warning("Backup after segments save failed: %s", e)
                 return jsonify({"ok": True})
     abort(404)
 
@@ -759,11 +725,13 @@ def generate_activity_debrief(activity_id):
 
 @app.route("/sync-now", methods=["POST"])
 def sync_now():
-    def _run():
-        restore_from_github()
-        run_daily_pipeline(send_email_now=False)
-    threading.Thread(target=_run, daemon=True).start()
-    return jsonify({"ok": True, "message": "Sync started"})
+    # Run synchronously — Cloud Run kills background threads after the request returns.
+    try:
+        result = run_daily_pipeline(send_email_now=False)
+        return jsonify({"ok": True, "last_sync": (load_metrics().get("meta") or {}).get("last_sync")})
+    except Exception as e:
+        logger.exception("sync_now pipeline failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.get("/health")
@@ -776,35 +744,6 @@ def healthz():
 def api_last_sync():
     db = load_metrics()
     return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
-
-
-@app.route('/run-pipeline', methods=['POST'])
-def run_pipeline_webhook():
-    # Verify secret token to prevent unauthorized calls
-    secret = os.environ.get('PIPELINE_SECRET', '')
-    auth = request.headers.get('Authorization', '')
-    if secret and auth != f'Bearer {secret}':
-        return jsonify({'error': 'unauthorized'}), 401
-
-    import threading
-    threading.Thread(
-        target=run_daily_pipeline,
-        kwargs={'send_email_now': True},
-        daemon=True
-    ).start()
-    return jsonify({'ok': True, 'message': 'Pipeline started'})
-
-
-@app.route('/debug-token')
-def debug_token():
-    import os
-    token = os.environ.get('GITHUB_TOKEN', 'NOT SET')
-    repo = os.environ.get('GITHUB_REPO', 'NOT SET')
-    return jsonify({
-        'token_prefix': token[:10] if token != 'NOT SET' else 'NOT SET',
-        'token_length': len(token),
-        'repo': repo
-    })
 
 
 

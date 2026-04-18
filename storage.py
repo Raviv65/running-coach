@@ -177,11 +177,6 @@ def list_activity_json_dates() -> set[str]:
         return set()
 
 
-def restore_from_github() -> bool:
-    """No-op — GCS is now the source of truth."""
-    return False
-
-
 def default_structure() -> dict[str, Any]:
     return {
         "metrics": {},

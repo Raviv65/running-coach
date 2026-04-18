@@ -23,51 +23,27 @@
     {% block content %}{% endblock %}
   </main>
   <script>
-  function syncNow() {
+  async function syncNow() {
     const btn = document.getElementById('sync-btn');
     btn.disabled = true;
-
-    // Capture current last_sync before we start, so we can detect when it changes
-    let prevSync = null;
-    fetch('/api/last-sync')
-      .then(r => r.json())
-      .then(d => { prevSync = d.last_sync; })
-      .catch(() => {})
-      .finally(() => {
-        btn.textContent = '⏳ Syncing…';
-        fetch('/sync-now', { method: 'POST' }).catch(() => {});
-
-        // Poll every 8s for up to 3 minutes
-        let elapsed = 0;
-        const maxWait = 180;
-        const interval = setInterval(() => {
-          elapsed += 8;
-          const remaining = maxWait - elapsed;
-          btn.textContent = `⏳ ${remaining}s…`;
-
-          fetch('/api/last-sync')
-            .then(r => r.json())
-            .then(d => {
-              if (d.last_sync && d.last_sync !== prevSync) {
-                clearInterval(interval);
-                btn.textContent = '✅ Done';
-                setTimeout(() => location.reload(), 800);
-              } else if (elapsed >= maxWait) {
-                clearInterval(interval);
-                btn.textContent = '🔄 Sync';
-                btn.disabled = false;
-                location.reload();
-              }
-            })
-            .catch(() => {
-              if (elapsed >= maxWait) {
-                clearInterval(interval);
-                btn.textContent = '🔄 Sync';
-                btn.disabled = false;
-              }
-            });
-        }, 8000);
-      });
+    btn.textContent = '⏳ Syncing…';
+    try {
+      // Pipeline runs synchronously on Cloud Run — just wait for the response.
+      const r = await fetch('/sync-now', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        btn.textContent = '✅ Done';
+        setTimeout(() => location.reload(), 800);
+      } else {
+        btn.textContent = '❌ Failed';
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = '🔄 Sync'; }, 3000);
+      }
+    } catch (e) {
+      btn.textContent = '❌ Error';
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = '🔄 Sync'; }, 3000);
+    }
   }
   </script>
 </body>
