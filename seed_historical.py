@@ -162,6 +162,12 @@ def main():
         print(f"Seed set: CTL={first['ctl']}, ATL={first['atl']} from {first_d}")
     meta["last_excel_seed_date"] = last_d
     print(f"last_excel_seed_date set to {last_d}")
+    last_rec = historical[last_d]
+    if "ctl" in last_rec:
+        meta["morning_seed_ctl"] = last_rec["ctl"]
+    if "atl" in last_rec:
+        meta["morning_seed_atl"] = last_rec["atl"]
+    print(f"Morning seeds set: CTL={last_rec.get('ctl')}, ATL={last_rec.get('atl')} from {last_d}")
 
     save_db(METRICS_PATH, db)
 
