@@ -22,9 +22,9 @@ def daily_trimp_totals(activities_by_date: dict[str, list[dict[str, Any]]]) -> d
     for d, acts in activities_by_date.items():
         s = 0.0
         for a in acts:
-            t = a.get("trimp")
-            if t is None:
-                t = a.get("tss")  # TSS is an acceptable TRIMP proxy when TRIMP is absent
+            # Prefer Suunto's own TSS from FIT file — exact match with Suunto app CTL/ATL.
+            # Fall back to Runalyze TRIMP, then generic TSS.
+            t = a.get("suunto_tss") or a.get("trimp") or a.get("tss")
             if t is not None:
                 s += float(t)
         out[d] = s

@@ -19,6 +19,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
+from fit_parser import parse_fit
 from compute import (
     ac_ratio,
     build_trimp_history,
@@ -136,7 +137,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         # Runalyze snapshot, matching by activity ID (exact) or by day+duration
         # (for suunto-* entries not yet in Runalyze).
         _PRESERVE = {
-            "epoc", "calories_kcal", "tss", "segments", "hr_timeseries",
+            "epoc", "calories_kcal", "tss", "suunto_tss", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
             "step_count", "debrief_html", "debrief_generated_utc",
         }
@@ -492,9 +493,13 @@ def upload_activity():
 
     try:
         raw_bytes = f.stream.read()
-        data = json.loads(raw_bytes.decode("utf-8"))
-        result = compute_trimp_from_data(data, hr_max=hr_max, hr_rest=hr_rest)
-        del data
+        filename = (f.filename or "").lower()
+        if filename.endswith(".fit"):
+            result = parse_fit(raw_bytes)
+        else:
+            data = json.loads(raw_bytes.decode("utf-8"))
+            result = compute_trimp_from_data(data, hr_max=hr_max, hr_rest=hr_rest)
+            del data
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

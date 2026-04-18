@@ -6,3 +6,4 @@ anthropic>=0.40.0
 APScheduler>=3.10.0
 markdown>=3.5.0
 google-cloud-storage>=2.14.0
+fitparse>=1.2.0
