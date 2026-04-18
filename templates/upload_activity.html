@@ -2,13 +2,13 @@
 {% block title %}Upload Activity — Running Coach{% endblock %}
 {% block content %}
 <h1>Upload Activity</h1>
-<p class="sub">Export the JSON file from the Suunto app and upload it here.</p>
+<p class="sub">Upload a Suunto FIT or JSON file. FIT files include Suunto's exact training load score for accurate CTL/ATL/TSB.</p>
 <div class="card" style="max-width:480px; padding:28px;">
   <div id="drop-zone" style="border:2px dashed var(--border); border-radius:10px; padding:40px 20px; text-align:center; cursor:pointer; transition:border-color 0.2s;">
     <div style="font-size:2rem; margin-bottom:10px;">📂</div>
-    <div style="font-weight:600; margin-bottom:6px;">Drop Suunto JSON here</div>
+    <div style="font-weight:600; margin-bottom:6px;">Drop Suunto FIT or JSON here</div>
     <div style="color:var(--muted); font-size:0.88rem; margin-bottom:16px;">or click to browse</div>
-    <input type="file" id="file-input" accept=".json" style="display:none;">
+    <input type="file" id="file-input" accept=".fit,.json" style="display:none;">
     <button onclick="document.getElementById('file-input').click()" style="background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Choose File</button>
   </div>
   <div id="status" style="margin-top:20px; display:none;"></div>
@@ -41,7 +41,7 @@ function handleFile(file) {
             <div><b>Date:</b> ${r.date}</div>
             <div><b>Distance:</b> ${r.distance_km} km</div>
             <div><b>Duration:</b> ${r.duration_min} min</div>
-            <div><b>TRIMP:</b> ${r.trimp}</div>
+            <div><b>TSS:</b> ${r.suunto_tss ?? r.trimp}</div>
             <div><b>PTE:</b> ${r.peak_training_effect}</div>
             <div><b>Recovery:</b> ${r.recovery_time_hrs}h</div>
             <div style="margin-top:12px;"><a href="/activity" style="color:#2563eb;font-weight:600;">← Back to Activity Log</a></div>
