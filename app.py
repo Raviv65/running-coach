@@ -553,11 +553,17 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Register FIT TSS in the training_load tracker so CTL/ATL/TSB stays current.
+        # Register FIT TSS in the training_load tracker and update today's dashboard metrics.
         if filename.endswith(".fit") and result.get("suunto_tss") is not None:
             try:
                 tl_add_activity(day, result["suunto_tss"])
                 tl_update(utc_today_iso())
+                tl = get_training_load()
+                if tl["last_updated"]:
+                    m = db.setdefault("metrics", {}).setdefault(utc_today_iso(), {})
+                    m["ctl"] = tl["ctl"]
+                    m["atl"] = tl["atl"]
+                    m["tsb"] = tl["tsb"]
             except Exception as e:
                 logger.warning("training_load add_activity failed: %s", e)
         save_metrics(db)
