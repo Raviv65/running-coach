@@ -282,7 +282,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         new_morning_ctl = (float(ctl_v) - today_tss * _b_c) / _a_c
         new_morning_atl = (float(atl_v) - today_tss * _b_a) / _a_a
         old_seed = meta.get("last_excel_seed_date") or ""
-        if today >= old_seed:
+        if today > old_seed:
             meta["last_excel_seed_date"] = today
             meta["morning_seed_ctl"] = round(new_morning_ctl, 4)
             meta["morning_seed_atl"] = round(new_morning_atl, 4)
