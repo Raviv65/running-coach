@@ -21,6 +21,12 @@ from flask import Flask, abort, jsonify, render_template, request
 from analyze import build_prompt, call_claude
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
+from training_load import (
+    seed as tl_seed,
+    add_activity as tl_add_activity,
+    update_to_date as tl_update,
+    get_training_load,
+)
 from compute import (
     ac_ratio,
     build_trimp_history,
@@ -271,23 +277,21 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     if tsb_v is not None:
         m_today["tsb"] = round(tsb_v, 2)
 
-    # Auto-advance seed to today so future pipeline runs don't recompute from a fixed old date.
-    # Back-calculate morning CTL/ATL from today's end-of-day values so the next run is idempotent.
-    if ctl_v is not None:
-        _a_c = math.exp(-1.0 / 42.0)
-        _b_c = 1.0 - _a_c
-        _a_a = math.exp(-1.0 / 7.0)
-        _b_a = 1.0 - _a_a
-        today_tss = float(daily_trimp.get(today, 0.0))
-        new_morning_ctl = (float(ctl_v) - today_tss * _b_c) / _a_c
-        new_morning_atl = (float(atl_v) - today_tss * _b_a) / _a_a
-        old_seed = meta.get("last_excel_seed_date") or ""
-        if today > old_seed:
-            meta["last_excel_seed_date"] = today
-            meta["morning_seed_ctl"] = round(new_morning_ctl, 4)
-            meta["morning_seed_atl"] = round(new_morning_atl, 4)
-            logger.info("Auto-advanced seed to %s (morning_ctl=%.2f morning_atl=%.2f)",
-                        today, new_morning_ctl, new_morning_atl)
+    # Override CTL/ATL/TSB with training_load.py values (Suunto integer-rounding formula).
+    try:
+        tl_update(today)
+        tl = get_training_load()
+        if tl["last_updated"]:
+            m_today["ctl"] = tl["ctl"]
+            m_today["atl"] = tl["atl"]
+            m_today["tsb"] = tl["tsb"]
+            # Backfill series so ramp_rate / ac_ratio use the corrected values
+            if today in series:
+                series[today]["ctl"] = tl["ctl"]
+                series[today]["atl"] = tl["atl"]
+                series[today]["tsb"] = tl["tsb"]
+    except Exception as e:
+        logger.warning("training_load update failed, keeping pipeline values: %s", e)
 
     rr = ramp_rate_ctl(series, 7)
     m_today["ramp_rate"] = round(rr, 3) if rr is not None else None
@@ -549,6 +553,13 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
+        # Register FIT TSS in the training_load tracker so CTL/ATL/TSB stays current.
+        if filename.endswith(".fit") and result.get("suunto_tss") is not None:
+            try:
+                tl_add_activity(day, result["suunto_tss"])
+                tl_update(utc_today_iso())
+            except Exception as e:
+                logger.warning("training_load add_activity failed: %s", e)
         save_metrics(db)
 
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
@@ -789,40 +800,18 @@ def settings():
 
 @app.route("/set-seeds", methods=["POST"])
 def set_seeds():
-    """
-    Calibrate CTL/ATL from known-good values (e.g. Suunto app).
-    Body: { "date": "YYYY-MM-DD", "ctl": <float>, "atl": <float>, "tsb": <float>, "trimp": <float|null> }
-    For a rest day (trimp=0 or null): morning seeds are back-calculated from end-of-day ctl/atl.
-    """
+    """Calibrate CTL/ATL from known Suunto values. Body: {date, ctl, atl}"""
     body = request.get_json(force=True) or {}
     seed_date = body.get("date") or utc_today_iso()
-    ctl = float(body["ctl"])
-    atl = float(body["atl"])
-    tsb = float(body.get("tsb", ctl - atl))
-    trimp = float(body["trimp"]) if body.get("trimp") else 0.0
-
-    import math
-    decay_ctl = math.exp(-1.0 / 42.0)
-    decay_atl = math.exp(-1.0 / 7.0)
-    load_ctl = 1.0 - decay_ctl
-    load_atl = 1.0 - decay_atl
-
-    # Back-calculate morning seeds from end-of-day observed values
-    # eod_ctl = morning_ctl * decay_ctl + trimp * load_ctl  → morning_ctl = (eod_ctl - trimp*load_ctl) / decay_ctl
-    morning_ctl = (ctl - trimp * load_ctl) / decay_ctl
-    morning_atl = (atl - trimp * load_atl) / decay_atl
-
-    db = load_metrics()
-    meta = db.setdefault("meta", {})
-    meta["last_excel_seed_date"] = seed_date
-    meta["morning_seed_ctl"] = round(morning_ctl, 4)
-    meta["morning_seed_atl"] = round(morning_atl, 4)
-    save_metrics(db)
-    logger.info("Seeds updated: date=%s morning_ctl=%.2f morning_atl=%.2f (from ctl=%.1f atl=%.1f tsb=%.1f trimp=%.1f)",
-                seed_date, morning_ctl, morning_atl, ctl, atl, tsb, trimp)
-    return jsonify({"ok": True, "seed_date": seed_date,
-                    "morning_ctl": round(morning_ctl, 2),
-                    "morning_atl": round(morning_atl, 2)})
+    ctl = int(round(float(body["ctl"])))
+    atl = int(round(float(body["atl"])))
+    try:
+        tl_seed(seed_date, ctl, atl)
+    except Exception as e:
+        logger.exception("tl_seed failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+    logger.info("Seeds set via tl_seed: date=%s CTL=%d ATL=%d", seed_date, ctl, atl)
+    return jsonify({"ok": True, "seed_date": seed_date, "ctl": ctl, "atl": atl, "tsb": ctl - atl})
 
 
 @app.route("/recompute-trimp", methods=["POST"])
