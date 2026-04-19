@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Settings — Running Coach{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+
+<div class="card" style="max-width:480px; padding:28px; margin-bottom:24px;">
+  <h2 style="margin-top:0; font-size:1.1rem;">Calibrate CTL / ATL</h2>
+  <p class="sub" style="margin-bottom:20px;">Enter this morning's values from Suunto (before today's run). Only needed once — auto-advances daily after that.</p>
+
+  <div style="display:grid; gap:14px;">
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:0.9rem; font-weight:600;">
+      Date (yesterday)
+      <input id="s-date" type="date" value="{{ yesterday }}" style="padding:7px 10px; border:1px solid var(--border); border-radius:7px; font-size:1rem;">
+    </label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:0.9rem; font-weight:600;">
+        CTL (Suunto morning)
+        <input id="s-ctl" type="number" step="0.1" placeholder="e.g. 39.5" style="padding:7px 10px; border:1px solid var(--border); border-radius:7px; font-size:1rem;">
+      </label>
+      <label style="display:flex; flex-direction:column; gap:4px; font-size:0.9rem; font-weight:600;">
+        ATL (Suunto morning)
+        <input id="s-atl" type="number" step="0.1" placeholder="e.g. 34" style="padding:7px 10px; border:1px solid var(--border); border-radius:7px; font-size:1rem;">
+      </label>
+    </div>
+    <p class="sub" style="margin:0; font-size:0.82rem;">TRIMP is set to 0 — the pipeline will apply today's FIT TSS automatically when you sync after your run.</p>
+    <button onclick="saveSeeds()" style="background:#2563eb;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:600;font-size:0.95rem;cursor:pointer;align-self:start;">Save &amp; Sync</button>
+    <div id="seed-status"></div>
+  </div>
+</div>
+
+<script>
+async function saveSeeds() {
+  const date = document.getElementById('s-date').value;
+  const ctl  = parseFloat(document.getElementById('s-ctl').value);
+  const atl  = parseFloat(document.getElementById('s-atl').value);
+  const st   = document.getElementById('seed-status');
+  if (!date || isNaN(ctl) || isNaN(atl)) { st.innerHTML = '<span style="color:#dc2626">Fill in all fields.</span>'; return; }
+  st.innerHTML = '<span style="color:var(--muted)">⏳ Saving…</span>';
+  const r = await fetch('/set-seeds', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ date, ctl, atl, tsb: ctl - atl, trimp: 0 })
+  });
+  const d = await r.json();
+  if (!d.ok) { st.innerHTML = `<span style="color:#dc2626">❌ ${d.error}</span>`; return; }
+  st.innerHTML = '<span style="color:var(--muted)">⏳ Syncing…</span>';
+  const r2 = await fetch('/sync-now', { method:'POST' });
+  const d2 = await r2.json();
+  if (d2.ok) { st.innerHTML = '<span style="color:#15803d">✅ Done — values updated.</span>'; }
+  else { st.innerHTML = '<span style="color:#dc2626">Seeds saved, but sync failed.</span>'; }
+}
+</script>
+{% endblock %}

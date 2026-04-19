@@ -781,6 +781,12 @@ def api_last_sync():
     return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
 
 
+@app.route("/settings")
+def settings():
+    yesterday = (date.fromisoformat(utc_today_iso()) - timedelta(days=1)).isoformat()
+    return render_template("settings.html", yesterday=yesterday)
+
+
 @app.route("/set-seeds", methods=["POST"])
 def set_seeds():
     """
