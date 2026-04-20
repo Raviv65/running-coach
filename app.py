@@ -816,8 +816,25 @@ def set_seeds():
     except Exception as e:
         logger.exception("tl_seed failed")
         return jsonify({"ok": False, "error": str(e)}), 500
-    logger.info("Seeds set via tl_seed: date=%s CTL=%.1f ATL=%.1f", seed_date, ctl, atl)
-    return jsonify({"ok": True, "seed_date": seed_date, "ctl": round(ctl), "atl": round(atl), "tsb": round(ctl - atl)})
+
+    # Backfill load from already-uploaded FITs stored in metrics.json.
+    # epoc is extracted by fit_parser and saved per-activity; use it to
+    # populate training_load activities without requiring re-upload.
+    db = load_metrics()
+    backfilled = 0
+    for day, acts in db.get("activities", {}).items():
+        if day <= seed_date:
+            continue
+        day_epoc = sum(a.get("epoc") or 0 for a in acts if a.get("source") == "suunto_fit")
+        if day_epoc > 0:
+            if tl_add_activity(day, day_epoc / 1.1):
+                backfilled += 1
+    if backfilled:
+        tl_update(utc_today_iso())
+
+    tl = get_training_load()
+    logger.info("Seeds set: date=%s CTL=%.1f ATL=%.1f backfilled=%d days", seed_date, ctl, atl, backfilled)
+    return jsonify({"ok": True, "seed_date": seed_date, "ctl": tl["ctl"], "atl": tl["atl"], "tsb": tl["tsb"], "backfilled_days": backfilled})
 
 
 @app.route("/recompute-trimp", methods=["POST"])
