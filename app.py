@@ -901,6 +901,13 @@ def debug_load():
     })
 
 
+@app.route("/debug-tl")
+def debug_tl():
+    """Show raw training_load.json state from GCS."""
+    from training_load import _load_state
+    return jsonify(_load_state())
+
+
 if __name__ == "__main__":
     init_scheduler()
     port = int(os.environ.get("PORT", "5000"))
