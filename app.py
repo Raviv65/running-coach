@@ -925,6 +925,26 @@ def debug_tl():
     return jsonify(_load_state())
 
 
+@app.route("/debug-wellness")
+def debug_wellness():
+    """Show raw wellness rows from Runalyze and what gets parsed for today."""
+    from sync import extract_daily_wellness
+    today = utc_today_iso()
+    client = RunalyzeClient()
+    rows = []
+    try:
+        rows = client.fetch_wellness_snapshots()
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    fresh = extract_daily_wellness(rows)
+    return jsonify({
+        "today": today,
+        "raw_rows_last5": rows[-5:] if rows else [],
+        "fresh_today": fresh.get(today),
+        "fresh_yesterday": fresh.get((date.fromisoformat(today) - timedelta(days=1)).isoformat()),
+    })
+
+
 if __name__ == "__main__":
     init_scheduler()
     port = int(os.environ.get("PORT", "5000"))
