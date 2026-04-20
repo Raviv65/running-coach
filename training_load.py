@@ -8,6 +8,11 @@ Formula — applied once per calendar day, rounding after every step:
     ATL = round(ATL + (tss - ATL) * (1 - exp(-1/7)))
     TSB = CTL - ATL
 
+The seed (date, CTL, ATL) is stored separately from the running totals.
+update_to_date() always recomputes forward from the seed using all stored
+activities, so uploading a FIT for any past date is always correctly applied
+regardless of when update_to_date() was last called.
+
 Usage from other modules:
     from training_load import seed, add_activity, update_to_date, get_training_load
 
@@ -51,11 +56,11 @@ def _load_state() -> dict[str, Any]:
         client = _gcs_client()
         blob = client.bucket(GCS_BUCKET).blob(_TL_OBJECT)
         if not blob.exists():
-            return {"ctl": 0, "atl": 0, "last_updated": None, "activities": []}
+            return {"seed_date": None, "seed_ctl": 0, "seed_atl": 0, "activities": []}
         return json.loads(blob.download_as_text(encoding="utf-8"))
     except Exception as e:
         logger.error("training_load: GCS load failed: %s", e)
-        return {"ctl": 0, "atl": 0, "last_updated": None, "activities": []}
+        return {"seed_date": None, "seed_ctl": 0, "seed_atl": 0, "activities": []}
 
 
 def _save_state(state: dict[str, Any], retries: int = 3) -> None:
@@ -76,29 +81,56 @@ def _save_state(state: dict[str, Any], retries: int = 3) -> None:
     raise last_exc
 
 
+def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[int, int]:
+    """
+    Recompute CTL/ATL from the seed through target_date_str using all stored
+    activities. Always starts fresh from the seed so the result is idempotent
+    regardless of when activities were added relative to update_to_date calls.
+    """
+    seed_d = date.fromisoformat(state["seed_date"])
+    target_d = date.fromisoformat(target_date_str)
+
+    tss_by_date: dict[str, int] = {}
+    for a in state.get("activities", []):
+        if a["date"] > state["seed_date"]:
+            tss_by_date[a["date"]] = tss_by_date.get(a["date"], 0) + a["tss"]
+
+    ctl = state["seed_ctl"]
+    atl = state["seed_atl"]
+    cur = seed_d + timedelta(days=1)
+    while cur <= target_d:
+        ds = cur.isoformat()
+        tss = tss_by_date.get(ds, 0)
+        ctl = round(ctl + (tss - ctl) * _K_CTL)
+        atl = round(atl + (tss - atl) * _K_ATL)
+        cur += timedelta(days=1)
+
+    return ctl, atl
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 def seed(date_str: str, ctl: int, atl: int) -> None:
     """
-    Bootstrap from known Suunto values. Discards any stored activities after
-    date_str so they don't re-apply load already baked into the seed.
+    Bootstrap from known Suunto values. Discards any stored activities on or
+    before date_str (already baked into the seed) and keeps later ones.
 
     Args:
-        date_str: ISO date string, e.g. "2026-04-19"
+        date_str: ISO date string representing the morning anchor, e.g. "2026-04-19"
         ctl: Suunto's current CTL (integer)
         atl: Suunto's current ATL (integer)
     """
     state = _load_state()
-    # Keep activities on or before seed date; newer ones would be double-counted.
+    state["seed_date"] = date_str
+    state["seed_ctl"] = int(ctl)
+    state["seed_atl"] = int(atl)
+    # Drop activities on or before the seed — they're already reflected in the seed values.
     state["activities"] = [
         a for a in state.get("activities", [])
-        if a["date"] <= date_str
+        if a["date"] > date_str
     ]
-    state["ctl"] = int(ctl)
-    state["atl"] = int(atl)
-    state["last_updated"] = date_str
     _save_state(state)
     logger.info("training_load seeded: date=%s CTL=%d ATL=%d", date_str, ctl, atl)
 
@@ -109,9 +141,14 @@ def add_activity(date_str: str, tss: float) -> bool:
     already exists. Returns True if a new entry was added.
     """
     state = _load_state()
+    if not state.get("seed_date"):
+        logger.warning("training_load: add_activity called before seed — ignoring")
+        return False
+    if date_str <= state["seed_date"]:
+        logger.warning("training_load: activity on/before seed date %s ignored", state["seed_date"])
+        return False
     activities = state.setdefault("activities", [])
     tss_int = round(float(tss))
-    # Deduplicate by date+tss
     if any(a["date"] == date_str and a["tss"] == tss_int for a in activities):
         return False
     activities.append({"date": date_str, "tss": tss_int})
@@ -123,42 +160,21 @@ def add_activity(date_str: str, tss: float) -> bool:
 
 def update_to_date(target_date_str: str) -> None:
     """
-    Advance CTL/ATL/TSB from last_updated up to target_date_str, applying
-    Suunto's integer-rounding formula once per calendar day.
-
-    If last_updated is None (unseeded state) this is a no-op.
+    Recompute CTL/ATL/TSB from the seed through target_date_str and persist.
+    Safe to call multiple times or after late FIT uploads — always gives the
+    correct answer because it replays from the seed each time.
     """
     state = _load_state()
-    last = state.get("last_updated")
-    if not last:
+    if not state.get("seed_date"):
         return  # not seeded yet
 
-    last_d = date.fromisoformat(last)
-    target_d = date.fromisoformat(target_date_str)
-    if target_d <= last_d:
-        return  # already up to date
-
-    # Build a lookup: date → total TSS for that day
-    tss_by_date: dict[str, int] = {}
-    for a in state.get("activities", []):
-        if a["date"] > last:
-            tss_by_date[a["date"]] = tss_by_date.get(a["date"], 0) + a["tss"]
-
-    ctl = state["ctl"]
-    atl = state["atl"]
-    cur = last_d + timedelta(days=1)
-    while cur <= target_d:
-        ds = cur.isoformat()
-        tss = tss_by_date.get(ds, 0)
-        ctl = round(ctl + (tss - ctl) * _K_CTL)
-        atl = round(atl + (tss - atl) * _K_ATL)
-        cur += timedelta(days=1)
-
+    ctl, atl = _recompute(state, target_date_str)
     state["ctl"] = ctl
     state["atl"] = atl
     state["last_updated"] = target_date_str
     _save_state(state)
-    logger.info("training_load updated to %s: CTL=%d ATL=%d TSB=%d", target_date_str, ctl, atl, ctl - atl)
+    logger.info("training_load updated to %s: CTL=%d ATL=%d TSB=%d",
+                target_date_str, ctl, atl, ctl - atl)
 
 
 def get_training_load() -> dict[str, Any]:
@@ -185,15 +201,14 @@ if __name__ == "__main__":
     seed_arg = next((a for a in args if a.startswith("--seed")), None)
 
     if seed_arg:
-        # --seed YYYY-MM-DD,CTL,ATL
         value = seed_arg.split("=", 1)[-1] if "=" in seed_arg else args[args.index("--seed") + 1]
         parts = value.strip().split(",")
         if len(parts) != 3:
             print("Usage: python training_load.py --seed YYYY-MM-DD,CTL,ATL")
             sys.exit(1)
-        seed_date, seed_ctl, seed_atl = parts[0].strip(), int(parts[1]), int(parts[2])
-        seed(seed_date, seed_ctl, seed_atl)
-        print(f"Seeded: date={seed_date} CTL={seed_ctl} ATL={seed_atl} TSB={seed_ctl - seed_atl}")
+        sd, sc, sa = parts[0].strip(), int(parts[1]), int(parts[2])
+        seed(sd, sc, sa)
+        print(f"Seeded: date={sd} CTL={sc} ATL={sa} TSB={sc - sa}")
     else:
         tl = get_training_load()
         print(f"CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}  last_updated={tl['last_updated']}")
