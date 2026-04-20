@@ -18,17 +18,17 @@
     <div class="metrics-grid">
       <div class="card mcard">
         <div class="label">CTL</div>
-        <div class="value">{{ metrics.get("ctl") if metrics.get("ctl") is not none else "—" }}</div>
+        <div class="value">{{ metrics.get("ctl")|round|int if metrics.get("ctl") is not none else "—" }}</div>
       </div>
       <div class="card mcard">
         <div class="label">ATL</div>
         {% set atl = metrics.get("atl") %}{% set ctl = metrics.get("ctl") %}
-        <div class="value" style="color:{% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">{{ atl if atl is not none else "—" }}</div>
+        <div class="value" style="color:{% if atl is not none and ctl is not none %}{% if atl > ctl %}#dc2626{% else %}#15803d{% endif %}{% endif %}">{{ atl|round|int if atl is not none else "—" }}</div>
       </div>
       <div class="card mcard">
         <div class="label">TSB</div>
         {% set tsb = metrics.get("tsb") %}
-        <div class="value" style="color:{% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">{{ tsb if tsb is not none else "—" }}</div>
+        <div class="value" style="color:{% if tsb is not none %}{% if tsb > -5 %}#15803d{% elif tsb > -15 %}#c2410c{% else %}#dc2626{% endif %}{% endif %}">{{ tsb|round|int if tsb is not none else "—" }}</div>
       </div>
       <div class="card mcard">
         <div class="label">A:C Ratio</div>
