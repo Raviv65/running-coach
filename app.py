@@ -137,7 +137,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         # Runalyze snapshot, matching by activity ID (exact) or by day+duration
         # (for suunto-* entries not yet in Runalyze).
         _PRESERVE = {
-            "epoc", "calories_kcal", "tss", "segments", "hr_timeseries",
+            "epoc", "calories_kcal", "trimp", "tss", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
             "step_count", "debrief_html", "debrief_generated_utc",
         }
