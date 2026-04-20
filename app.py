@@ -196,6 +196,13 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         logger.exception("Runalyze wellness fetch error")
 
     fresh_wellness = extract_daily_wellness(wellness_rows)
+    # Runalyze stores the morning HRV reading under the previous day's date.
+    # Shift it forward so today's display shows today's measurement.
+    yesterday = (today_d - timedelta(days=1)).isoformat()
+    if not fresh_wellness.get(today, {}).get("hrv_last"):
+        prev_hrv = fresh_wellness.get(yesterday, {}).get("hrv_last")
+        if prev_hrv is not None:
+            fresh_wellness.setdefault(today, {})["hrv_last"] = prev_hrv
     today_well, est_flags = merge_wellness_into_state(metrics, fresh_wellness, today)
 
     daily_trimp = daily_trimp_totals(grouped)
