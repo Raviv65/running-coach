@@ -553,10 +553,10 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Register FIT TSS in the training_load tracker and update today's dashboard metrics.
-        if filename.endswith(".fit") and result.get("suunto_tss") is not None:
+        # Register FIT load (peak_epoc / 1.1) in the training_load tracker and update dashboard.
+        if filename.endswith(".fit") and result.get("epoc") is not None:
             try:
-                tl_add_activity(day, result["suunto_tss"])
+                tl_add_activity(day, result["epoc"] / 1.1)
                 tl_update(utc_today_iso())
                 tl = get_training_load()
                 if tl["last_updated"]:
@@ -809,15 +809,15 @@ def set_seeds():
     """Calibrate CTL/ATL from known Suunto values. Body: {date, ctl, atl}"""
     body = request.get_json(force=True) or {}
     seed_date = body.get("date") or utc_today_iso()
-    ctl = int(round(float(body["ctl"])))
-    atl = int(round(float(body["atl"])))
+    ctl = float(body["ctl"])
+    atl = float(body["atl"])
     try:
         tl_seed(seed_date, ctl, atl)
     except Exception as e:
         logger.exception("tl_seed failed")
         return jsonify({"ok": False, "error": str(e)}), 500
-    logger.info("Seeds set via tl_seed: date=%s CTL=%d ATL=%d", seed_date, ctl, atl)
-    return jsonify({"ok": True, "seed_date": seed_date, "ctl": ctl, "atl": atl, "tsb": ctl - atl})
+    logger.info("Seeds set via tl_seed: date=%s CTL=%.1f ATL=%.1f", seed_date, ctl, atl)
+    return jsonify({"ok": True, "seed_date": seed_date, "ctl": round(ctl), "atl": round(atl), "tsb": round(ctl - atl)})
 
 
 @app.route("/recompute-trimp", methods=["POST"])
