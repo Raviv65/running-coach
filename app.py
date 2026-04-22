@@ -802,9 +802,32 @@ def sync_now():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _check_pipeline_secret() -> bool:
+    """Return True if the request carries the correct X-Pipeline-Secret header."""
+    expected = os.environ.get("PIPELINE_SECRET")
+    if not expected:
+        return True  # secret not configured — allow (dev mode)
+    return request.headers.get("X-Pipeline-Secret") == expected
+
+
+@app.route("/run-pipeline", methods=["POST"])
+def run_pipeline():
+    """Called by Cloud Scheduler at 05:00 and 05:15 UTC to generate the briefing."""
+    if not _check_pipeline_secret():
+        return jsonify({"ok": False, "error": "unauthorized"}), 403
+    try:
+        result = run_daily_pipeline(send_email_now=False)
+        return jsonify({"ok": True, "today": result.get("today")})
+    except Exception as e:
+        logger.exception("run_pipeline failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/trigger-email", methods=["POST"])
 def trigger_email():
-    """Manually trigger the morning briefing email for debugging."""
+    """Called by Cloud Scheduler at 05:30 UTC (and manually) to send the briefing email."""
+    if not _check_pipeline_secret():
+        return jsonify({"ok": False, "error": "unauthorized"}), 403
     try:
         result = run_daily_pipeline(send_email_now=True)
         return jsonify({"ok": True, "subject": result.get("subject"), "email_sent": result.get("email_sent")})
