@@ -144,7 +144,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         # Runalyze snapshot, matching by activity ID (exact) or by day+duration
         # (for suunto-* entries not yet in Runalyze).
         _PRESERVE = {
-            "epoc", "calories_kcal", "tss", "suunto_tss", "segments", "hr_timeseries",
+            "epoc", "calories_kcal", "tss", "training_stress_score", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
             "step_count", "debrief_html", "debrief_generated_utc", "source",
         }
@@ -560,10 +560,10 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Register FIT load (suunto_tss * 0.86) in the training_load tracker and update dashboard.
-        if filename.endswith(".fit") and result.get("suunto_tss") is not None:
+        # Register FIT load (training_stress_score * 0.86) in the training_load tracker and update dashboard.
+        if filename.endswith(".fit") and result.get("training_stress_score") is not None:
             try:
-                tl_add_activity(day, result["suunto_tss"] * 0.86)
+                tl_add_activity(day, result["training_stress_score"] * 0.86)
                 tl_update(utc_today_iso())
                 tl = get_training_load()
                 if tl["last_updated"]:
@@ -832,7 +832,7 @@ def set_seeds():
     for day, acts in db.get("activities", {}).items():
         if day <= seed_date:
             continue
-        day_tss = sum(a.get("suunto_tss") or 0 for a in acts if a.get("suunto_tss"))
+        day_tss = sum(a.get("training_stress_score") or a.get("suunto_tss") or 0 for a in acts if a.get("training_stress_score") or a.get("suunto_tss"))
         if day_tss > 0:
             if tl_add_activity(day, day_tss * 0.86):
                 backfilled += 1
@@ -893,7 +893,7 @@ def debug_load():
         tss_source = "rest"
         activities_detail = []
         for a in day_acts:
-            t = a.get("suunto_tss")
+            t = a.get("training_stress_score") or a.get("suunto_tss")
             if t is not None:
                 tss_val += float(t)
                 tss_source = "fit"

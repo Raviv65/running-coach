@@ -41,7 +41,7 @@ def parse_fit(data: bytes) -> dict:
 
     return {
         "date": act_date,
-        "suunto_tss": round(float(session["training_stress_score"]), 1) if session.get("training_stress_score") else None,
+        "training_stress_score": round(float(session["training_stress_score"]), 1) if session.get("training_stress_score") else None,
         "duration_min": round(duration_s / 60, 1) if duration_s else None,
         "distance_km": round(distance_m / 1000, 2) if distance_m else None,
         "avg_hr": float(session.get("avg_heart_rate")) if session.get("avg_heart_rate") else None,
