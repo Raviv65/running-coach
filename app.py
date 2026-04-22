@@ -560,10 +560,10 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Register FIT load (peak_epoc / 1.1) in the training_load tracker and update dashboard.
-        if filename.endswith(".fit") and result.get("epoc") is not None:
+        # Register FIT load (suunto_tss * 0.86) in the training_load tracker and update dashboard.
+        if filename.endswith(".fit") and result.get("suunto_tss") is not None:
             try:
-                tl_add_activity(day, result["epoc"] / 1.1)
+                tl_add_activity(day, result["suunto_tss"] * 0.86)
                 tl_update(utc_today_iso())
                 tl = get_training_load()
                 if tl["last_updated"]:
@@ -832,9 +832,9 @@ def set_seeds():
     for day, acts in db.get("activities", {}).items():
         if day <= seed_date:
             continue
-        day_epoc = sum(a.get("epoc") or 0 for a in acts if a.get("source") == "suunto_fit")
-        if day_epoc > 0:
-            if tl_add_activity(day, day_epoc / 1.1):
+        day_tss = sum(a.get("suunto_tss") or 0 for a in acts if a.get("suunto_tss"))
+        if day_tss > 0:
+            if tl_add_activity(day, day_tss * 0.86):
                 backfilled += 1
     if backfilled:
         tl_update(utc_today_iso())
