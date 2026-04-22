@@ -123,8 +123,9 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         if load > 0:
             ctl += (load - ctl) * _K_CTL
             atl += (load - atl) * _K_ATL
-        ctl *= _DECAY_CTL
-        atl *= _DECAY_ATL
+        else:
+            ctl *= _DECAY_CTL
+            atl *= _DECAY_ATL
         cur += timedelta(days=1)
 
     return ctl, atl
