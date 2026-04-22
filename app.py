@@ -542,12 +542,17 @@ def upload_activity():
     acts = db.setdefault("activities", {})
     day = result["date"]
     existing = acts.get(day, [])
-    already = any(
-        abs(a.get("duration_min", 0) - result["duration_min"]) < 1
-        and a.get("hr_timeseries") is not None
-        for a in existing
+    match = next(
+        (a for a in existing
+         if abs(a.get("duration_min", 0) - result["duration_min"]) < 1
+         and a.get("hr_timeseries") is not None),
+        None,
     )
-    if not already:
+    if match:
+        # Activity already stored with hr_timeseries — patch training_stress_score if missing.
+        if result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
+            match["training_stress_score"] = result["training_stress_score"]
+    else:
         acts[day] = [
             a for a in existing
             if abs(a.get("duration_min", 0) - result["duration_min"]) >= 1
@@ -560,10 +565,11 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-        # Register FIT load (training_stress_score * 0.86) in the training_load tracker and update dashboard.
-        if filename.endswith(".fit") and result.get("training_stress_score") is not None:
-            try:
-                tl_add_activity(day, result["training_stress_score"] * 0.86)
+    # Register FIT load (training_stress_score * 0.86) — runs whether activity was new or patched.
+    tss = (match.get("training_stress_score") if match else result.get("training_stress_score"))
+    if filename.endswith(".fit") and tss is not None:
+        try:
+            tl_add_activity(day, tss * 0.86)
                 tl_update(utc_today_iso())
                 tl = get_training_load()
                 if tl["last_updated"]:
