@@ -4,7 +4,7 @@ CTL / ATL / TSB training-load tracker matching Suunto's algorithm.
 State is stored in GCS as ``training_load.json`` (separate from metrics.json).
 
 Formula — applied once per calendar day, floats kept throughout:
-    Load = training_stress_score * 0.86  (from FIT session message)
+    Load = training_stress_score * 1.39  (from FIT session message)
     k_ctl   = 1 - exp(-1/42)
     k_atl   = 1 - exp(-1/7)
     decay_ctl = exp(-1/42)
@@ -123,6 +123,8 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         if load > 0:
             ctl += (load - ctl) * _K_CTL
             atl += (load - atl) * _K_ATL
+            ctl *= _DECAY_CTL
+            atl *= _DECAY_ATL
         else:
             ctl *= _DECAY_CTL
             atl *= _DECAY_ATL
