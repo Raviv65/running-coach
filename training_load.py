@@ -111,12 +111,12 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
 
     load_by_date: dict[str, float] = {}
     for a in state.get("activities", []):
-        if a["date"] > state["seed_date"]:
+        if a["date"] >= state["seed_date"]:
             load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
 
     ctl = float(state["seed_ctl"])
     atl = float(state["seed_atl"])
-    cur = seed_d + timedelta(days=1)
+    cur = seed_d
     while cur <= target_d:
         ds = cur.isoformat()
         load = load_by_date.get(ds, 0.0)
@@ -153,7 +153,7 @@ def seed(date_str: str, ctl: float, atl: float) -> None:
     state["seed_atl"] = float(atl)
     state["activities"] = [
         a for a in state.get("activities", [])
-        if a["date"] > date_str
+        if a["date"] >= date_str
     ]
     _save_state(state)
     logger.info("training_load seeded: date=%s CTL=%.1f ATL=%.1f", date_str, ctl, atl)
@@ -168,7 +168,7 @@ def add_activity(date_str: str, load: float) -> bool:
     if not state.get("seed_date"):
         logger.warning("training_load: add_activity called before seed — ignoring")
         return False
-    if date_str <= state["seed_date"]:
+    if date_str < state["seed_date"]:
         logger.warning("training_load: activity on/before seed date %s ignored", state["seed_date"])
         return False
     activities = state.setdefault("activities", [])
