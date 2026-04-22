@@ -349,14 +349,17 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     except Exception as e:
         logger.error("GCS save failed (pipeline will still send email if requested): %s", e)
 
+    email_sent = False
     if send_email_now:
         try:
             subj = f"Running briefing — {today}"
             send_briefing_email(subj, text)
+            email_sent = True
+            logger.info("Briefing email sent: subject=%r", subj)
         except Exception:
             logger.exception("Email send failed")
 
-    return {"ok": True, "today": today, "briefing_text": text}
+    return {"ok": True, "today": today, "briefing_text": text, "email_sent": email_sent, "subject": f"Running briefing — {today}" if send_email_now else None}
 
 
 def scheduled_pipeline() -> None:
