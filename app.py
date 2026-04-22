@@ -570,16 +570,16 @@ def upload_activity():
     if filename.endswith(".fit") and tss is not None:
         try:
             tl_add_activity(day, tss * 1.4)
-                tl_update(utc_today_iso())
-                tl = get_training_load()
-                if tl["last_updated"]:
-                    m = db.setdefault("metrics", {}).setdefault(utc_today_iso(), {})
-                    m["ctl"] = tl["ctl"]
-                    m["atl"] = tl["atl"]
-                    m["tsb"] = tl["tsb"]
-            except Exception as e:
-                logger.warning("training_load add_activity failed: %s", e)
-        save_metrics(db)
+            tl_update(utc_today_iso())
+            tl = get_training_load()
+            if tl["last_updated"]:
+                m = db.setdefault("metrics", {}).setdefault(utc_today_iso(), {})
+                m["ctl"] = tl["ctl"]
+                m["atl"] = tl["atl"]
+                m["tsb"] = tl["tsb"]
+        except Exception as e:
+            logger.warning("training_load add_activity failed: %s", e)
+    save_metrics(db)
 
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
 
@@ -796,6 +796,17 @@ def sync_now():
         return jsonify({"ok": True, "last_sync": (load_metrics().get("meta") or {}).get("last_sync")})
     except Exception as e:
         logger.exception("sync_now pipeline failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/trigger-email", methods=["POST"])
+def trigger_email():
+    """Manually trigger the morning briefing email for debugging."""
+    try:
+        result = run_daily_pipeline(send_email_now=True)
+        return jsonify({"ok": True, "subject": result.get("subject"), "email_sent": result.get("email_sent")})
+    except Exception as e:
+        logger.exception("trigger_email failed")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
