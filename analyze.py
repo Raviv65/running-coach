@@ -43,7 +43,7 @@ def hr_zones(threshold_hr: int) -> dict[str, str]:
     }
 
 
-def build_prompt(db: dict[str, Any], today: str) -> str:
+def build_prompt(db: dict[str, Any], today: str, context: str = "") -> str:
     meta = db.get("meta") or {}
     athlete = meta.get("athlete") or {}
     name = athlete.get("name", "Athlete")
@@ -79,8 +79,9 @@ def build_prompt(db: dict[str, Any], today: str) -> str:
         else "No estimated carry-forward for today."
     )
 
+    context_section = f"\n{context}\n" if context else ""
     prompt = f"""You are an expert running coach. Produce TODAY's training briefing for {name}.
-
+{context_section}
 ## ATHLETE PROFILE
 {ATHLETE_PROFILE}
 Watch: {watch} | HR zones: {ztext}

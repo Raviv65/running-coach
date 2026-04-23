@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
+from context_builder import build_context, save_briefing
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
@@ -330,7 +331,13 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     meta["last_sync"] = datetime.now(timezone.utc).isoformat()
 
     try:
-        text, model = call_claude(build_prompt(db, today))
+        context = build_context(db, today)
+    except Exception as e:
+        logger.warning("context_builder failed (continuing without context): %s", e)
+        context = ""
+
+    try:
+        text, model = call_claude(build_prompt(db, today, context=context))
     except Exception as e:
         logger.warning("Claude briefing failed: %s", e)
         text = f"**Briefing unavailable** ({e!s}). Check ANTHROPIC_API_KEY and model name."
@@ -342,6 +349,12 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         "model": model,
         "created_utc": datetime.now(timezone.utc).isoformat(),
     }
+
+    if model != "error":
+        try:
+            save_briefing(today, text)
+        except Exception as e:
+            logger.warning("save_briefing failed: %s", e)
 
     # Save to GCS — don't let a transient network failure prevent the email from sending.
     try:
