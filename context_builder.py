@@ -162,22 +162,42 @@ def build_context(db: dict[str, Any], today: str) -> str:
 
     # ── Athlete profile ──────────────────────────────────────────────────────
     hz = profile.get("hr_zones", DEFAULT_PROFILE["hr_zones"])
+
+    def _zone_str(key: str, lo: int, hi: int) -> str:
+        """Format a zone from either array [lo,hi] or legacy scalar keys."""
+        z = hz.get(key)
+        if isinstance(z, (list, tuple)) and len(z) == 2:
+            lo2, hi2 = int(z[0]), int(z[1])
+            return f"<{hi2}" if lo2 == 0 else (f">{lo2}" if hi2 >= 900 else f"{lo2}–{hi2}")
+        # legacy flat-key format
+        return f"{lo}–{hi}"
+
+    hz_text = (
+        f"Z1 {_zone_str('Z1', 0, 128)}, "
+        f"Z2 {_zone_str('Z2', 128, 140)}, "
+        f"Z3 {_zone_str('Z3', 140, 150)}, "
+        f"Z4 {_zone_str('Z4', 150, 158)}, "
+        f"Z5 {_zone_str('Z5', 158, 999)} bpm"
+    )
+
+    freq = profile.get("training_days_per_week") or profile.get("training_frequency_min_per_week", 3)
+    max_hr = profile.get("max_hr") or profile.get("max_hr_bpm", 163)
     lines += [
         "=== ATHLETE PROFILE ===",
-        f"Name: {profile.get('name', 'Raviv')} | Age: {profile.get('age', 60)} | Sex: {profile.get('sex', 'male').title()}",
+        f"Name: {profile.get('name', 'Raviv')} | Age: {profile.get('age', 60)} | Gender: {profile.get('gender', profile.get('sex', 'male')).title()}",
         f"Sport: {profile.get('sport', 'treadmill running')}",
-        f"Max HR: {profile.get('max_hr_bpm', 165)} bpm",
-        (
-            f"HR zones: Z1 <{hz.get('z1_max', 128)}, "
-            f"Z2 {hz.get('z2_min', 128)}–{hz.get('z2_max', 140)}, "
-            f"Z3 {hz.get('z3_min', 140)}–{hz.get('z3_max', 150)}, "
-            f"Z4 {hz.get('z4_min', 150)}–{hz.get('z4_max', 158)}, "
-            f"Z5 >{hz.get('z5_min', 158)} bpm"
-        ),
-        f"Training frequency: min {profile.get('training_frequency_min_per_week', 3)}×/week",
+        f"Max HR: {max_hr} bpm",
+        f"HR zones: {hz_text}",
+        f"Training frequency: {freq}×/week",
     ]
     if profile.get("notes"):
         lines.append(f"Notes: {profile['notes']}")
+
+    weekly = profile.get("weekly_structure", [])
+    if weekly:
+        lines.append("Weekly session structure:")
+        for s in weekly:
+            lines.append(f"  Session {s.get('session', '?')} — {s.get('type', '')}: {s.get('description', '')}")
 
     # ── Progress toward goal ─────────────────────────────────────────────────
     current_pace = float(profile.get("threshold_pace_kmh", 8.5))
@@ -220,10 +240,11 @@ def build_context(db: dict[str, Any], today: str) -> str:
     if not recent:
         lines.append("No activities recorded.")
     else:
-        lines.append(f"{'Date':<12} {'Sport':<14} {'Dist':>7} {'Dur':>7} {'AvgHR':>6} {'MaxHR':>6} {'TSS':>6}")
-        lines.append("─" * 62)
+        lines.append(f"{'Date':<12} {'Label':<14} {'Sport':<12} {'Dist':>7} {'Dur':>7} {'AvgHR':>6} {'MaxHR':>6} {'TSS':>6}")
+        lines.append("─" * 72)
         for day, a in recent[:28]:
-            sport = (a.get("sport") or "—")[:13]
+            label = (a.get("label") or "")[:13]
+            sport = (a.get("sport") or "—")[:11]
             dist_km = a.get("distance_km")
             dist = f"{dist_km:.1f}km" if dist_km else "—"
             dur_min = a.get("duration_min")
@@ -233,7 +254,7 @@ def build_context(db: dict[str, Any], today: str) -> str:
             tss = a.get("training_stress_score") or a.get("tss")
             tss_s = f"{float(tss):.0f}" if tss is not None else "—"
             lines.append(
-                f"{day:<12} {sport:<14} {dist:>7} {dur:>7} {avg_hr:>6} {max_hr:>6} {tss_s:>6}"
+                f"{day:<12} {label:<14} {sport:<12} {dist:>7} {dur:>7} {avg_hr:>6} {max_hr:>6} {tss_s:>6}"
             )
 
     # ── Biometrics — last 7 days ─────────────────────────────────────────────

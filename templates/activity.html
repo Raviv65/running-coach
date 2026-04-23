@@ -11,6 +11,7 @@
     <thead>
       <tr>
         <th>Date</th>
+        <th>Label</th>
         <th>Title</th>
         <th>Sport</th>
         <th>TRIMP</th>
@@ -25,8 +26,22 @@
     <tbody>
       {% for row in rows %}
       {% set clickable = row.get('has_json') or row.get('has_fit') %}
-      <tr {% if clickable %}class="clickable" onclick="window.location='/activity/{{ row.get('id') }}'"{% endif %}>
+      {% set act_id = row.get('id') %}
+      <tr {% if clickable %}class="clickable" onclick="rowClick(event,'{{ act_id }}')"{% endif %}>
         <td class="num">{{ row.date | datefmt }}</td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+          <span id="lbl-{{ act_id }}" class="lbl-text" onclick="startEdit('{{ act_id }}','{{ row.get('label') or '' }}')">
+            {{ row.get('label') or '—' }}
+          </span>
+          <span class="edit-icon" onclick="startEdit('{{ act_id }}','{{ row.get('label') or '' }}')" title="Edit label">✏️</span>
+          <span id="lbl-form-{{ act_id }}" style="display:none;">
+            <input id="lbl-input-{{ act_id }}" type="text" placeholder="{{ row.get('sport') or 'Label…' }}"
+                   style="width:110px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;font-size:0.85rem;"
+                   onkeydown="if(event.key==='Enter')saveLabel('{{ act_id }}');if(event.key==='Escape')cancelEdit('{{ act_id }}')">
+            <button onclick="saveLabel('{{ act_id }}')" style="margin-left:4px;padding:2px 8px;background:#2563eb;color:#fff;border:none;border-radius:5px;font-size:0.8rem;cursor:pointer;">Save</button>
+            <button onclick="cancelEdit('{{ act_id }}')" style="padding:2px 8px;background:none;border:none;font-size:0.8rem;cursor:pointer;color:var(--muted);">✕</button>
+          </span>
+        </td>
         <td>{{ row.title or '—' }}
           {% if row.get('has_fit') %}<span style="font-size:0.75rem;background:rgba(22,163,74,0.1);color:#16a34a;padding:2px 6px;border-radius:4px;margin-left:4px;">📊 FIT</span>
           {% elif row.get('has_json') %}<span style="font-size:0.75rem;background:rgba(37,99,235,0.1);color:#2563eb;padding:2px 6px;border-radius:4px;margin-left:4px;">📄 JSON</span>
@@ -42,7 +57,7 @@
         <td class="num">{{ row.get("suunto_tss") or row.get("tss") or "—" }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="10" class="sub">No activities yet.</td></tr>
+      <tr><td colspan="11" class="sub">No activities yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -52,5 +67,39 @@
 .btn-upload:hover { background:#1d4ed8; text-decoration:none; }
 tr.clickable { cursor:pointer; }
 tr.clickable:hover { background:#f0f4ff; }
+.lbl-text { cursor:pointer; color:var(--muted); font-size:0.85rem; }
+.lbl-text:not(:empty):not([data-empty]) { color:inherit; font-weight:500; }
+.edit-icon { font-size:0.75rem; cursor:pointer; margin-left:4px; opacity:0.4; }
+.edit-icon:hover { opacity:1; }
 </style>
+<script>
+function rowClick(e, id) {
+  window.location = '/activity/' + id;
+}
+function startEdit(id, current) {
+  document.getElementById('lbl-' + id).style.display = 'none';
+  document.getElementById('lbl-form-' + id).style.display = 'inline';
+  const inp = document.getElementById('lbl-input-' + id);
+  inp.value = current;
+  inp.focus();
+  inp.select();
+}
+function cancelEdit(id) {
+  document.getElementById('lbl-form-' + id).style.display = 'none';
+  document.getElementById('lbl-' + id).style.display = 'inline';
+}
+async function saveLabel(id) {
+  const inp = document.getElementById('lbl-input-' + id);
+  const label = inp.value.trim();
+  const r = await fetch('/activity/' + id + '/label', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  });
+  if (!r.ok) { alert('Save failed'); return; }
+  const span = document.getElementById('lbl-' + id);
+  span.textContent = label || '—';
+  cancelEdit(id);
+}
+</script>
 {% endblock %}
