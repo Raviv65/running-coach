@@ -97,14 +97,14 @@ def _save_state(state: dict[str, Any], retries: int = 3) -> None:
     raise last_exc
 
 
-def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, float]:
+def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, float, int]:
     """
-    Recompute CTL/ATL from the seed through target_date_str using all stored
-    activities. Always starts fresh from the seed so the result is idempotent
-    regardless of when activities were added relative to update_to_date calls.
+    Recompute CTL/ATL/TSB from the seed through target_date_str.
 
-    Activity day: apply load then overnight decay.
-    Rest day: overnight decay only.
+    Returns (ctl_eod, atl_eod, tsb_morning) where:
+    - ctl_eod / atl_eod are end-of-day floats after target_date's update
+    - tsb_morning = round(ctl - atl) captured at the START of target_date's
+      iteration, before any load or decay is applied (the "morning" value)
     """
     seed_d = date.fromisoformat(state["seed_date"])
     target_d = date.fromisoformat(target_date_str)
@@ -117,8 +117,10 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
     ctl = float(state["seed_ctl"])
     atl = float(state["seed_atl"])
     cur = seed_d
+    morning_tsb = round(ctl - atl)
     while cur <= target_d:
         ds = cur.isoformat()
+        morning_tsb = round(ctl - atl)  # before any update
         load = load_by_date.get(ds, 0.0)
         if load > 0:
             ctl += (load - ctl) * _K_CTL
@@ -128,7 +130,7 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
             atl *= _DECAY_ATL
         cur += timedelta(days=1)
 
-    return ctl, atl
+    return ctl, atl, morning_tsb
 
 
 # ---------------------------------------------------------------------------
@@ -190,13 +192,14 @@ def update_to_date(target_date_str: str) -> None:
     if not state.get("seed_date"):
         return
 
-    ctl, atl = _recompute(state, target_date_str)
+    ctl, atl, tsb = _recompute(state, target_date_str)
     state["ctl"] = ctl
     state["atl"] = atl
+    state["tsb"] = tsb
     state["last_updated"] = target_date_str
     _save_state(state)
-    logger.info("training_load updated to %s: CTL=%.2f ATL=%.2f TSB=%.2f",
-                target_date_str, ctl, atl, ctl - atl)
+    logger.info("training_load updated to %s: CTL=%.2f ATL=%.2f TSB(morning)=%d",
+                target_date_str, ctl, atl, tsb)
 
 
 def get_training_load() -> dict[str, Any]:
@@ -204,10 +207,11 @@ def get_training_load() -> dict[str, Any]:
     state = _load_state()
     ctl = state.get("ctl", 0.0)
     atl = state.get("atl", 0.0)
+    tsb = state.get("tsb")  # pre-computed morning value; fall back if absent
     return {
         "ctl": round(float(ctl)),
         "atl": round(float(atl)),
-        "tsb": round(float(ctl) - float(atl)),
+        "tsb": int(tsb) if tsb is not None else round(float(ctl) - float(atl)),
         "last_updated": state.get("last_updated"),
     }
 
