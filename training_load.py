@@ -4,7 +4,7 @@ CTL / ATL / TSB training-load tracker matching Suunto's algorithm.
 State is stored in GCS as ``training_load.json`` (separate from metrics.json).
 
 Formula — applied once per calendar day, floats kept throughout:
-    Load = training_stress_score * 1.4  (from FIT session message)
+    Load = training_stress_score * 1.45  (from FIT session message)
     k_ctl   = 1 - exp(-1/42)
     k_atl   = 1 - exp(-1/7)
     decay_ctl = exp(-1/42)

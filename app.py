@@ -581,11 +581,11 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-    # Register FIT load (training_stress_score * 1.4) — runs whether activity was new or patched.
+    # Register FIT load (training_stress_score * 1.45) — runs whether activity was new or patched.
     tss = (match.get("training_stress_score") if match else result.get("training_stress_score"))
     if filename.endswith(".fit") and tss is not None:
         try:
-            tl_add_activity(day, tss * 1.4)
+            tl_add_activity(day, tss * 1.45)
             tl_update(utc_today_iso())
             tl = get_training_load()
             if tl["last_updated"]:
@@ -903,7 +903,7 @@ def set_seeds():
             continue
         day_tss = sum(a.get("training_stress_score") or a.get("suunto_tss") or 0 for a in acts if a.get("training_stress_score") or a.get("suunto_tss"))
         if day_tss > 0:
-            if tl_add_activity(day, day_tss * 1.4):
+            if tl_add_activity(day, day_tss * 1.45):
                 backfilled += 1
     if backfilled:
         tl_update(utc_today_iso())
