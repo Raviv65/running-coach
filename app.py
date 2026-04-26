@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
-from context_builder import build_context, save_briefing
+from context_builder import build_context, save_briefing, load_athlete_profile
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
@@ -697,14 +697,55 @@ def _compute_segment_stats(hr_timeseries, segments, total_duration_sec):
     return results
 
 
-def _build_activity_debrief_prompt(activity: dict, athlete: dict) -> str:
-    name = athlete.get("name", "the athlete")
-    goal = athlete.get("goal", "improve performance")
-    thr = athlete.get("threshold_hr", 160)
+def _build_activity_debrief_prompt(activity: dict, athlete: dict, profile: dict) -> str:
+    name = athlete.get("name", profile.get("name", "the athlete"))
+    goal = athlete.get("goal", profile.get("goal", "improve performance"))
+    thr_hr = athlete.get("threshold_hr", profile.get("max_hr", 160))
+    thr_pace = profile.get("current_threshold_kmh") or profile.get("threshold_pace_kmh", 8.5)
+    days_per_week = profile.get("training_days_per_week", 3)
+    weekly_structure = profile.get("weekly_structure", [])
+    session_label = (activity.get("label") or "").strip()
+
+    # Determine session type for Z4/Z5 interpretation
+    threshold_sessions = {"threshold", "intervals", "interval", "tempo", "quality"}
+    is_quality = session_label.lower() in threshold_sessions if session_label else False
+    structure_summary = ""
+    if weekly_structure:
+        structure_summary = " / ".join(s.get("type", "") for s in weekly_structure if s.get("type"))
 
     lines = [
         f"You are a running coach analyzing a training session for {name}, "
-        f"who is training to: {goal}. Their lactate threshold HR is ~{thr} bpm.",
+        f"who is training to: {goal}.",
+        "",
+        "## Athlete Context",
+        f"- Training: {days_per_week}x per week ({structure_summary})" if structure_summary else f"- Training: {days_per_week}x per week",
+        f"- Threshold pace: {thr_pace}–{round(thr_pace + 0.1, 1)} km/h | Threshold HR: ~{thr_hr} bpm",
+        f"- Goal pace: {profile.get('goal_pace_kmh', 10.0)} km/h (run 10 km in 60 min)",
+    ]
+
+    if session_label:
+        lines.append(f"- Session type: {session_label}")
+    if is_quality:
+        lines.append(
+            "- Z4/Z5 time in this session is INTENTIONAL — do NOT flag it as a warning. "
+            "High HR zones are the training stimulus for threshold/interval work."
+        )
+        lines.append(
+            "- HR drift of 2–5 bpm over a threshold segment is NORMAL and expected. "
+            "Only flag drift >5 bpm as a concern."
+        )
+    else:
+        lines.append(
+            "- For aerobic/building sessions: Z4/Z5 time above ~10 min warrants a note "
+            "about keeping effort aerobic."
+        )
+        lines.append("- HR drift of 2–3% over a long easy segment is normal.")
+
+    notes = profile.get("notes", "")
+    if notes:
+        lines.append(f"- Notes: {notes}")
+
+    lines += [
         "",
         f"Activity: {activity.get('title', 'Run')} — {activity.get('date', '')}",
         f"Sport: {activity.get('sport', 'Running')}",
@@ -790,9 +831,11 @@ def generate_activity_debrief(activity_id):
     act_copy = dict(activity_row)
     gcs_data = load_activity_json_from_gcs(act_copy.get("date", ""))
     athlete = (db.get("meta") or {}).get("athlete") or {}
+    profile = load_athlete_profile()
     if gcs_data:
         try:
-            parsed = compute_trimp_from_data(gcs_data, hr_max=int(athlete.get("hr_max", 160)), hr_rest=int(athlete.get("hr_rest", 54)))
+            hr_max = int(profile.get("max_hr") or athlete.get("hr_max", 160))
+            parsed = compute_trimp_from_data(gcs_data, hr_max=hr_max, hr_rest=int(athlete.get("hr_rest", 54)))
             for field in ("hr_timeseries", "epoc", "calories_kcal", "tss",
                           "avg_hr", "max_hr", "peak_training_effect",
                           "recovery_time_hrs", "step_count"):
@@ -800,7 +843,7 @@ def generate_activity_debrief(activity_id):
                     act_copy[field] = parsed[field]
         except Exception as e:
             logger.warning("Could not enrich activity for debrief: %s", e)
-    prompt = _build_activity_debrief_prompt(act_copy, athlete)
+    prompt = _build_activity_debrief_prompt(act_copy, athlete, profile)
 
     try:
         text, model = call_claude(prompt)
