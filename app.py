@@ -296,6 +296,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     load_today = series.get(today, {})
     ctl_v = load_today.get("ctl")
     atl_v = load_today.get("atl")
+    tsb_v = load_today.get("tsb")
 
     rr = ramp_rate_ctl(series, 7)
     m_today["ramp_rate"] = round(rr, 3) if rr is not None else None
