@@ -123,8 +123,10 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         morning_tsb = round(ctl - atl)  # before any update
         load = load_by_date.get(ds, 0.0)
         if load > 0:
-            ctl += (load - ctl) * _K_CTL
+            ctl += (load - ctl) * _K_CTL   # apply load
             atl += (load - atl) * _K_ATL
+            ctl *= _DECAY_CTL               # overnight decay (Suunto two-step)
+            atl *= _DECAY_ATL
         else:
             ctl *= _DECAY_CTL
             atl *= _DECAY_ATL
