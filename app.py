@@ -27,6 +27,7 @@ from training_load import (
     add_activity as tl_add_activity,
     update_to_date as tl_update,
     get_training_load,
+    history_series as tl_history_series,
 )
 from compute import (
     ac_ratio,
@@ -259,9 +260,27 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         fwd_start = last_seed_d + timedelta(days=1)
         fwd_expanded = expand_calendar(daily_trimp, fwd_start, today_d)
         fwd_series = ctl_atl_tsb_series(fwd_expanded, seed_ctl=eod_ctl, seed_atl=eod_atl)
-        enrich_metrics_history(metrics, fwd_series)
-        series = fwd_series  # use forward series for today's ramp/TSB lookups below
-    else:
+        series = fwd_series  # keep for ramp_rate / ac_ratio lookups
+    # else: series already set above
+
+    # Use training_load.py as the single authoritative source for CTL/ATL/TSB history.
+    # This ensures the chart and today's widget both use the two-step Suunto formula
+    # with TSS×1.45 loads — no more divergence between history and today.
+    try:
+        tl_update(today)
+        tl_series = tl_history_series(today)
+        if tl_series:
+            enrich_metrics_history(metrics, tl_series)
+            # Also keep series in sync for ramp_rate / ac_ratio
+            series.update(tl_series)
+        tl = get_training_load()
+        if tl["last_updated"]:
+            m_today = metrics.setdefault(today, {})
+            m_today["ctl"] = tl["ctl"]
+            m_today["atl"] = tl["atl"]
+            m_today["tsb"] = tl["tsb"]
+    except Exception as e:
+        logger.warning("training_load update failed, falling back to TRIMP series: %s", e)
         enrich_metrics_history(metrics, series)
 
     m_today = metrics.setdefault(today, {})
@@ -277,29 +296,6 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     load_today = series.get(today, {})
     ctl_v = load_today.get("ctl")
     atl_v = load_today.get("atl")
-    tsb_v = load_today.get("tsb")
-    if ctl_v is not None:
-        m_today["ctl"] = round(ctl_v, 2)
-    if atl_v is not None:
-        m_today["atl"] = round(atl_v, 2)
-    if tsb_v is not None:
-        m_today["tsb"] = round(tsb_v, 2)
-
-    # Override CTL/ATL/TSB with training_load.py values (Suunto integer-rounding formula).
-    try:
-        tl_update(today)
-        tl = get_training_load()
-        if tl["last_updated"]:
-            m_today["ctl"] = tl["ctl"]
-            m_today["atl"] = tl["atl"]
-            m_today["tsb"] = tl["tsb"]
-            # Backfill series so ramp_rate / ac_ratio use the corrected values
-            if today in series:
-                series[today]["ctl"] = tl["ctl"]
-                series[today]["atl"] = tl["atl"]
-                series[today]["tsb"] = tl["tsb"]
-    except Exception as e:
-        logger.warning("training_load update failed, keeping pipeline values: %s", e)
 
     rr = ramp_rate_ctl(series, 7)
     m_today["ramp_rate"] = round(rr, 3) if rr is not None else None

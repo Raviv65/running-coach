@@ -184,6 +184,48 @@ def add_activity(date_str: str, load: float) -> bool:
     return True
 
 
+def history_series(target_date_str: str | None = None) -> dict[str, dict[str, float]]:
+    """
+    Return a per-day series {date_str: {ctl, atl, tsb}} from seed through
+    target_date_str (defaults to today).  Uses the same two-step Suunto
+    formula as _recompute — suitable for backfilling metrics.json history.
+    """
+    state = _load_state()
+    if not state.get("seed_date"):
+        return {}
+    if target_date_str is None:
+        from datetime import date as _date
+        target_date_str = _date.today().isoformat()
+
+    seed_d = date.fromisoformat(state["seed_date"])
+    target_d = date.fromisoformat(target_date_str)
+
+    load_by_date: dict[str, float] = {}
+    for a in state.get("activities", []):
+        if a["date"] >= state["seed_date"]:
+            load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
+
+    ctl = float(state["seed_ctl"])
+    atl = float(state["seed_atl"])
+    cur = seed_d
+    out: dict[str, dict[str, float]] = {}
+    while cur <= target_d:
+        ds = cur.isoformat()
+        tsb_morning = ctl - atl
+        load = load_by_date.get(ds, 0.0)
+        if load > 0:
+            ctl += (load - ctl) * _K_CTL
+            atl += (load - atl) * _K_ATL
+            ctl *= _DECAY_CTL
+            atl *= _DECAY_ATL
+        else:
+            ctl *= _DECAY_CTL
+            atl *= _DECAY_ATL
+        out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
+        cur += timedelta(days=1)
+    return out
+
+
 def update_to_date(target_date_str: str) -> None:
     """
     Recompute CTL/ATL/TSB from the seed through target_date_str and persist.
