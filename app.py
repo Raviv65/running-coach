@@ -1,5 +1,5 @@
 """
-Flask web app: dashboard + APScheduler (05:00 UTC pipeline, 05:30 UTC email).
+Flask web app: dashboard + APScheduler (05:15 UTC pipeline, 05:30 UTC email).
 """
 
 from __future__ import annotations
@@ -414,10 +414,10 @@ def init_scheduler() -> None:
         return
     _scheduler_started = True
     scheduler = BackgroundScheduler(timezone=timezone.utc)
-    scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=0, id="daily_pipeline")
+    scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=15, id="daily_pipeline")
     scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
     scheduler.start()
-    logger.info("APScheduler started (05:00 UTC pipeline, 05:30 UTC email).")
+    logger.info("APScheduler started (05:15 UTC pipeline, 05:30 UTC email).")
 
 
 @app.before_request
