@@ -1,5 +1,5 @@
 """
-Flask web app: dashboard + APScheduler (05:00 UTC pipeline, 05:30 UTC email).
+Flask web app: dashboard + APScheduler (07:00 UTC pipeline, 07:30 UTC email).
 """
 
 from __future__ import annotations
@@ -392,7 +392,7 @@ def scheduled_email() -> None:
         md = b.get("markdown")
 
         if not md:
-            logger.info("No briefing for %s at 05:30; re-running pipeline with email.", today)
+            logger.info("No briefing for %s at 07:30; re-running pipeline with email.", today)
             run_daily_pipeline(send_email_now=True)
             return
 
@@ -414,10 +414,10 @@ def init_scheduler() -> None:
         return
     _scheduler_started = True
     scheduler = BackgroundScheduler(timezone=timezone.utc)
-    scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=0, id="daily_pipeline")
-    scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
+    scheduler.add_job(scheduled_pipeline, "cron", hour=7, minute=0, id="daily_pipeline")
+    scheduler.add_job(scheduled_email, "cron", hour=7, minute=30, id="daily_email")
     scheduler.start()
-    logger.info("APScheduler started (05:00 UTC pipeline, 05:30 UTC email).")
+    logger.info("APScheduler started (07:00 UTC pipeline, 07:30 UTC email).")
 
 
 @app.before_request
