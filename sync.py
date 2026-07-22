@@ -214,19 +214,27 @@ class RunalyzeClient:
                 if d:
                     merged.setdefault(d, {})["rmssd"] = row.get("value") or row.get("rmssd")
 
-        # Sleep
+        # Sleep — Runalyze may return one row per sleep phase; sum duration across
+        # all phases for the same date, take the last non-null quality/resting-HR.
         code, body = self._get("/metrics/sleep")
         if code == 200:
             rows = body if isinstance(body, list) else self._iter_members(body)
             for row in rows:
                 raw_date = _pick_str(row, ("date_time", "date", "day"))
                 d = raw_date[:10] if raw_date else None
-                if d:
-                    merged.setdefault(d, {}).update({
-                        "sleepDuration": row.get("duration"),
-                        "sleepQuality": row.get("quality_100"),
-                        "heartRateRest": row.get("hr_lowest"),
-                    })
+                if not d:
+                    continue
+                day = merged.setdefault(d, {})
+                dur = row.get("duration")
+                if dur is not None:
+                    try:
+                        day["sleepDuration"] = day.get("sleepDuration", 0) + float(dur)
+                    except (TypeError, ValueError):
+                        pass
+                if row.get("quality_100") is not None:
+                    day["sleepQuality"] = row.get("quality_100")
+                if row.get("hr_lowest") is not None:
+                    day["heartRateRest"] = row.get("hr_lowest")
 
         return [{"date": d, **v} for d, v in merged.items()]
 
