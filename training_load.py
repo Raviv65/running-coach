@@ -163,8 +163,9 @@ def seed(date_str: str, ctl: float, atl: float) -> None:
 
 def add_activity(date_str: str, load: float) -> bool:
     """
-    Register a FIT upload's load (= peak_epoc / 1.1). Idempotent — skips if
-    the same date+load already exists. Returns True if a new entry was added.
+    Register a FIT upload's load. Idempotent — skips if the same date+load
+    already exists (within 0.01). Returns True if a new entry was added.
+    Use set_activity() when uploading FIT files to replace stale approximations.
     """
     state = _load_state()
     if not state.get("seed_date"):
@@ -181,6 +182,31 @@ def add_activity(date_str: str, load: float) -> bool:
     activities.sort(key=lambda a: a["date"])
     _save_state(state)
     logger.info("training_load: added activity date=%s load=%.2f", date_str, load_f)
+    return True
+
+
+def set_activity(date_str: str, load: float) -> bool:
+    """
+    Set the authoritative FIT-native load for a date, replacing ALL existing
+    entries (including stale EPOC approximations). Unlike add_activity, this
+    always produces exactly one entry per date. Returns True if anything changed.
+    """
+    state = _load_state()
+    if not state.get("seed_date"):
+        logger.warning("training_load: set_activity called before seed — ignoring")
+        return False
+    if date_str < state["seed_date"]:
+        return False
+    activities = state.setdefault("activities", [])
+    load_f = round(float(load), 2)
+    current = round(sum(a["load"] for a in activities if a["date"] == date_str), 2)
+    if abs(current - load_f) < 0.01:
+        return False  # already correct
+    state["activities"] = [a for a in activities if a["date"] != date_str]
+    state["activities"].append({"date": date_str, "load": load_f})
+    state["activities"].sort(key=lambda a: a["date"])
+    _save_state(state)
+    logger.info("training_load: set activity date=%s load=%.2f (was %.2f)", date_str, load_f, current)
     return True
 
 
@@ -308,21 +334,37 @@ if __name__ == "__main__":
         print(f"Seed: date={state['seed_date']} CTL={state['seed_ctl']} ATL={state['seed_atl']}")
 
         fit_dates = list_fit_dates_from_gcs()
-        reg_dates = {a["date"] for a in state.get("activities", [])}
-        new_dates = sorted(fit_dates - reg_dates)
-        if new_dates:
-            print(f"Syncing {len(new_dates)} unregistered FIT(s): {new_dates}")
-            for fd in new_dates:
-                raw = download_fit_from_gcs(fd)
-                if raw:
-                    try:
-                        pf = parse_fit(raw)
-                        tss_val = pf.get("training_stress_score")
-                        if tss_val is not None:
-                            added = add_activity(fd, float(tss_val) * 1.45)
-                            print(f"  {fd}: TSS={tss_val:.1f} load={float(tss_val)*1.45:.2f} {'added' if added else 'already present'}")
-                    except Exception as e:
-                        print(f"  {fd}: parse error — {e}")
+        stored_load: dict[str, float] = {}
+        for a in state.get("activities", []):
+            if a["date"] >= state["seed_date"]:
+                stored_load[a["date"]] = stored_load.get(a["date"], 0.0) + a["load"]
+
+        print(f"Checking {len(fit_dates)} GCS FIT file(s) against training_load.json ...")
+        changed_any = False
+        for fd in sorted(fit_dates):
+            raw = download_fit_from_gcs(fd)
+            if not raw:
+                print(f"  {fd}: download failed")
+                continue
+            try:
+                pf = parse_fit(raw)
+                tss_val = pf.get("training_stress_score")
+                if tss_val is None:
+                    print(f"  {fd}: no TSS in FIT — skipped")
+                    continue
+                correct_load = round(float(tss_val) * 1.45, 2)
+                current_load = round(stored_load.get(fd, 0.0), 2)
+                if abs(current_load - correct_load) >= 0.01:
+                    set_activity(fd, correct_load)
+                    print(f"  {fd}: FIXED  TSS={tss_val:.1f} load={correct_load:.2f} (was {current_load:.2f})")
+                    changed_any = True
+                else:
+                    print(f"  {fd}: OK     TSS={tss_val:.1f} load={correct_load:.2f}")
+            except Exception as e:
+                print(f"  {fd}: parse error — {e}")
+
+        if changed_any:
+            state = _load_state()  # reload after fixes
 
         update_to_date(target)
         tl = get_training_load()

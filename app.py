@@ -25,6 +25,7 @@ from fit_parser import parse_fit
 from training_load import (
     seed as tl_seed,
     add_activity as tl_add_activity,
+    set_activity as tl_set_activity,
     update_to_date as tl_update,
     get_training_load,
     history_series as tl_history_series,
@@ -627,8 +628,11 @@ def upload_activity():
         None,
     )
     if match:
-        # Activity already stored with hr_timeseries — patch training_stress_score if missing.
-        if result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
+        # Activity already stored with hr_timeseries.
+        # For FIT uploads always overwrite TSS with the native FIT value (replaces stale EPOC approx).
+        if filename.endswith(".fit") and result.get("training_stress_score") is not None:
+            match["training_stress_score"] = result["training_stress_score"]
+        elif result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
             match["training_stress_score"] = result["training_stress_score"]
     else:
         acts[day] = [
@@ -648,11 +652,12 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-    # Register FIT load (training_stress_score * 1.45) — runs whether activity was new or patched.
-    tss = (match.get("training_stress_score") if match else result.get("training_stress_score"))
+    # Register FIT load — always use native FIT TSS (set_activity replaces any stale EPOC load).
+    tss = result.get("training_stress_score") if filename.endswith(".fit") else \
+          (match.get("training_stress_score") if match else result.get("training_stress_score"))
     if filename.endswith(".fit") and tss is not None:
         try:
-            tl_add_activity(day, tss * 1.45)
+            tl_set_activity(day, tss * 1.45)
             tl_update(utc_today_iso())
             tl = get_training_load()
             if tl["last_updated"]:
