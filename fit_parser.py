@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import fitparse
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
+_ISRAEL_TZ = ZoneInfo("Asia/Jerusalem")
 
 
 def parse_fit(data: bytes) -> dict:
@@ -31,7 +35,12 @@ def parse_fit(data: bytes) -> dict:
     hr_sampled = hr_pts[::step]
 
     start = session.get("start_time")
-    act_date = start.strftime("%Y-%m-%d") if start else None
+    if start:
+        # fitparse returns naive UTC datetimes; convert to Israel local date
+        utc_dt = start.replace(tzinfo=timezone.utc)
+        act_date = utc_dt.astimezone(_ISRAEL_TZ).strftime("%Y-%m-%d")
+    else:
+        act_date = None
 
     duration_s = session.get("total_elapsed_time") or session.get("total_timer_time")
     distance_m = session.get("total_distance")

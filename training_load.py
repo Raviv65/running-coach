@@ -260,6 +260,12 @@ def get_training_load() -> dict[str, Any]:
     }
 
 
+def registered_activity_dates() -> set[str]:
+    """Return the set of dates for which load has been registered in training_load.json."""
+    state = _load_state()
+    return {a["date"] for a in state.get("activities", [])}
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -283,6 +289,57 @@ if __name__ == "__main__":
     elif "--status" in args:
         tl = get_training_load()
         print(f"CTL: {tl['ctl']} | ATL: {tl['atl']} | TSB: {tl['tsb']} | Last updated: {tl['last_updated']}")
+
+    elif "--validate" in args:
+        # Validate GCS backfill: load all FIT files from GCS, compute series,
+        # assert today's values match the watch (CTL≈32, ATL≈42, TSB≈-16 as of 2026-07-26).
+        # Usage: python training_load.py --validate [YYYY-MM-DD]
+        idx = args.index("--validate")
+        target = args[idx + 1] if idx + 1 < len(args) and not args[idx + 1].startswith("--") else date.today().isoformat()
+
+        from storage import list_fit_dates_from_gcs, download_fit_from_gcs
+        from fit_parser import parse_fit
+
+        print(f"Validating GCS backfill through {target} ...")
+        state = _load_state()
+        if not state.get("seed_date"):
+            print("ERROR: no seed set. Run --seed first.")
+            sys.exit(1)
+        print(f"Seed: date={state['seed_date']} CTL={state['seed_ctl']} ATL={state['seed_atl']}")
+
+        fit_dates = list_fit_dates_from_gcs()
+        reg_dates = {a["date"] for a in state.get("activities", [])}
+        new_dates = sorted(fit_dates - reg_dates)
+        if new_dates:
+            print(f"Syncing {len(new_dates)} unregistered FIT(s): {new_dates}")
+            for fd in new_dates:
+                raw = download_fit_from_gcs(fd)
+                if raw:
+                    try:
+                        pf = parse_fit(raw)
+                        tss_val = pf.get("training_stress_score")
+                        if tss_val is not None:
+                            added = add_activity(fd, float(tss_val) * 1.45)
+                            print(f"  {fd}: TSS={tss_val:.1f} load={float(tss_val)*1.45:.2f} {'added' if added else 'already present'}")
+                    except Exception as e:
+                        print(f"  {fd}: parse error — {e}")
+
+        update_to_date(target)
+        tl = get_training_load()
+        print(f"\nResult for {target}:")
+        print(f"  CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
+        print(f"  Expected: CTL≈32(±1)  ATL≈42(±1)  TSB≈-16(±2)")
+
+        ok = (abs(tl['ctl'] - 32) <= 1 and abs(tl['atl'] - 42) <= 1 and abs(tl['tsb'] - (-16)) <= 2)
+        if ok:
+            print("PASS: within tolerance of watch values.")
+        else:
+            print("FAIL: outside tolerance — printing daily series:")
+            series = history_series(target)
+            for d in sorted(series.keys()):
+                v = series[d]
+                print(f"  {d}: CTL={v['ctl']:.2f} ATL={v['atl']:.2f} TSB={v['tsb']:.2f}")
+        sys.exit(0 if ok else 1)
 
     else:
         tl = get_training_load()

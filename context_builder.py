@@ -149,12 +149,9 @@ def _weeks_to_goal(metrics: dict, today: str, profile: dict) -> str:
 
 def build_context(db: dict[str, Any], today: str) -> str:
     """Return a fully formatted context string to prepend to the Claude prompt."""
-    from training_load import get_training_load
-
     metrics = db.get("metrics") or {}
     activities = db.get("activities") or {}
     profile = load_athlete_profile()
-    tl = get_training_load()
     today_d = date.fromisoformat(today)
     today_m = metrics.get(today) or {}
 
@@ -211,10 +208,10 @@ def build_context(db: dict[str, Any], today: str) -> str:
         f"Estimated time to goal: {_weeks_to_goal(metrics, today, profile)}",
     ]
 
-    # ── Training load ────────────────────────────────────────────────────────
-    ctl = tl.get("ctl")
-    atl = tl.get("atl")
-    tsb = tl.get("tsb")
+    # ── Training load — read from metrics[today] (same source as dashboard tiles)
+    ctl = today_m.get("ctl")
+    atl = today_m.get("atl")
+    tsb = today_m.get("tsb")
     ac_ratio = today_m.get("ac_ratio")
     lines += [
         "",
