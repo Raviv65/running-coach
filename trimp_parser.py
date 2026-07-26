@@ -51,9 +51,7 @@ def compute_trimp_from_data(data: dict, hr_max: int = HR_MAX_DEFAULT, hr_rest: i
     energy_j = header.get('Energy')
     calories_kcal = round(energy_j / 4184) if energy_j is not None else None
 
-    # TSS approximation from EPOC: (EPOC / 200) * 100
     epoc = header.get('EPOC')
-    tss = round((epoc / 200) * 100) if epoc is not None else None
 
     # Convert hr_timeseries timestamps to seconds-from-start
     if hr_timeseries:
@@ -75,7 +73,6 @@ def compute_trimp_from_data(data: dict, hr_max: int = HR_MAX_DEFAULT, hr_rest: i
         'recovery_time_hrs': round(header.get('RecoveryTime', 0) / 3600, 1),
         'step_count': header.get('StepCount'),
         'calories_kcal': calories_kcal,
-        'tss': tss,
         'avg_hr': round(sum(s['hr_bpm'] for s in hr_samples) / len(hr_samples), 1) if hr_samples else None,
         'max_hr': round(max(s['hr_bpm'] for s in hr_samples), 1) if hr_samples else None,
         'hr_zones': {

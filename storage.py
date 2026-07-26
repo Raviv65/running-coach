@@ -177,6 +177,54 @@ def list_activity_json_dates() -> set[str]:
         return set()
 
 
+def save_activity_fit_to_gcs(raw_bytes: bytes, activity_date_str: str) -> None:
+    """Save raw FIT to GCS at activities/DDMMYYYY.fit."""
+    try:
+        ddmmyyyy = _date_to_ddmmyyyy(activity_date_str)
+        gcs_path = f"activities/{ddmmyyyy}.fit"
+        client = _client()
+        client.bucket(GCS_BUCKET).blob(gcs_path).upload_from_string(
+            raw_bytes, content_type="application/octet-stream"
+        )
+        logger.info("FIT saved to GCS at %s (%d KB)", gcs_path, len(raw_bytes) // 1024)
+    except Exception as e:
+        logger.error("Failed to save FIT to GCS: %s", e)
+
+
+def list_fit_dates_from_gcs() -> set[str]:
+    """Return YYYY-MM-DD dates that have a .fit file in GCS (metadata only, no download)."""
+    try:
+        client = _client()
+        blobs = client.bucket(GCS_BUCKET).list_blobs(prefix="activities/")
+        dates: set[str] = set()
+        for blob in blobs:
+            basename = blob.name.split("/")[-1]
+            if not basename.endswith(".fit") or basename.startswith("._"):
+                continue
+            name = basename[:-4]  # strip .fit → DDMMYYYY
+            if len(name) == 8 and name.isdigit():
+                dd, mm, yyyy = name[:2], name[2:4], name[4:]
+                dates.add(f"{yyyy}-{mm}-{dd}")
+        return dates
+    except Exception as e:
+        logger.warning("list_fit_dates_from_gcs failed: %s", e)
+        return set()
+
+
+def download_fit_from_gcs(activity_date_str: str) -> bytes | None:
+    """Download raw FIT bytes for a given YYYY-MM-DD date, or None if not found."""
+    try:
+        ddmmyyyy = _date_to_ddmmyyyy(activity_date_str)
+        client = _client()
+        blob = client.bucket(GCS_BUCKET).blob(f"activities/{ddmmyyyy}.fit")
+        if not blob.exists():
+            return None
+        return blob.download_as_bytes()
+    except Exception as e:
+        logger.warning("download_fit_from_gcs failed for %s: %s", activity_date_str, e)
+        return None
+
+
 def default_structure() -> dict[str, Any]:
     return {
         "metrics": {},

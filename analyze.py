@@ -53,6 +53,9 @@ def build_prompt(db: dict[str, Any], today: str, context: str = "") -> str:
     zones = hr_zones(th)
     ztext = ", ".join(f"{k}: {v}" for k, v in zones.items())
 
+    from datetime import date as _date
+    today_weekday = _date.fromisoformat(today).strftime("%A")
+
     m = (db.get("metrics") or {}).get(today) or {}
     metrics_sorted = sorted((db.get("metrics") or {}).keys())
 
@@ -86,6 +89,7 @@ def build_prompt(db: dict[str, Any], today: str, context: str = "") -> str:
 {ATHLETE_PROFILE}
 Watch: {watch} | HR zones: {ztext}
 
+Today is {today} ({today_weekday}).
 Today's computed metrics ({today}):
 {json.dumps(m, indent=2)}
 

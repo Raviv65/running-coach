@@ -28,6 +28,7 @@ from training_load import (
     update_to_date as tl_update,
     get_training_load,
     history_series as tl_history_series,
+    registered_activity_dates,
 )
 from compute import (
     ac_ratio,
@@ -40,7 +41,12 @@ from compute import (
     daily_trimp_totals,
 )
 from email_sender import markdown_to_html, send_briefing_email
-from storage import load_metrics, save_metrics, save_activity_json_to_gcs, load_activity_json_from_gcs, list_activity_json_dates
+from storage import (
+    load_metrics, save_metrics,
+    save_activity_json_to_gcs, save_activity_fit_to_gcs,
+    load_activity_json_from_gcs, list_activity_json_dates,
+    list_fit_dates_from_gcs, download_fit_from_gcs,
+)
 from sync import (
     RunalyzeClient,
     extract_daily_wellness,
@@ -268,6 +274,28 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         series = fwd_series  # keep for ramp_rate / ac_ratio lookups
     # else: series already set above
 
+    # Task 2: Sync any FIT files from GCS not yet registered in training_load (idempotent).
+    gcs_fit_dates: set[str] = set()
+    try:
+        gcs_fit_dates = list_fit_dates_from_gcs()
+        reg_dates = registered_activity_dates()
+        new_fit_dates = sorted(gcs_fit_dates - reg_dates)
+        for fit_date in new_fit_dates:
+            raw_fit = download_fit_from_gcs(fit_date)
+            if raw_fit:
+                try:
+                    parsed_fit = parse_fit(raw_fit)
+                    tss_fit = parsed_fit.get("training_stress_score")
+                    if tss_fit is not None:
+                        tl_add_activity(fit_date, float(tss_fit) * 1.45)
+                        logger.info("Pipeline: registered FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
+                except Exception as e:
+                    logger.warning("Pipeline: failed to parse GCS FIT for %s: %s", fit_date, e)
+        if new_fit_dates:
+            logger.info("Pipeline: synced %d new FIT(s) from GCS", len(new_fit_dates))
+    except Exception as e:
+        logger.warning("Pipeline: FIT GCS sync failed: %s", e)
+
     # Use training_load.py as the single authoritative source for CTL/ATL/TSB history.
     # This ensures the chart and today's widget both use the two-step Suunto formula
     # with TSS×1.45 loads — no more divergence between history and today.
@@ -332,11 +360,43 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     meta["trimp_history"] = build_trimp_history(expanded, 42)
     meta["last_sync"] = datetime.now(timezone.utc).isoformat()
 
+    # Task 3: Gap detection — Runalyze activity dates with no corresponding FIT.
+    guard_lines: list[str] = []
+    try:
+        seven_ago = (today_d - timedelta(days=7)).isoformat()
+        runalyze_recent = {d for d in grouped.keys() if d >= seven_ago}
+        gap_dates = sorted(runalyze_recent - gcs_fit_dates)
+        if gap_dates:
+            guard_lines.append(
+                "TRAINING-LOAD DATA INCOMPLETE: "
+                + ", ".join(gap_dates)
+                + " — activities are recorded in Runalyze but their FIT files haven't been "
+                "uploaded yet. CTL/ATL/TSB understate true load — advise the user to upload "
+                "the FIT, and do not treat today as a green light on load alone."
+            )
+            logger.warning("Pipeline: gap dates (activity without FIT): %s", gap_dates)
+    except Exception as e:
+        logger.warning("Pipeline: gap detection failed: %s", e)
+
+    # Task 4: Stale-data warning (last Runalyze sync >25h ago).
+    try:
+        last_sync_ts = meta.get("last_sync")
+        if last_sync_ts:
+            last_sync_dt = datetime.fromisoformat(last_sync_ts.replace("Z", "+00:00"))
+            hours_since = (datetime.now(timezone.utc) - last_sync_dt).total_seconds() / 3600
+            if hours_since > 25:
+                guard_lines.append(f"DATA MAY BE STALE (last sync {last_sync_ts})")
+    except Exception as e:
+        logger.warning("Pipeline: stale-data check failed: %s", e)
+
     try:
         context = build_context(db, today)
     except Exception as e:
         logger.warning("context_builder failed (continuing without context): %s", e)
         context = ""
+
+    if guard_lines:
+        context = "\n".join(guard_lines) + "\n\n" + context
 
     try:
         text, model = call_claude(build_prompt(db, today, context=context))
@@ -577,8 +637,13 @@ def upload_activity():
         ]
         result["id"] = f"suunto-{day}-{int(result['duration_min'])}"
         acts[day].append(result)
-        # Only save raw bytes to GCS for JSON files (FIT is binary, not useful for re-parsing)
-        if not filename.endswith(".fit"):
+        # Persist raw bytes to GCS so they survive re-deploys and seed resets.
+        if filename.endswith(".fit"):
+            try:
+                save_activity_fit_to_gcs(raw_bytes, day)
+            except Exception as e:
+                logger.warning("Could not save FIT to GCS: %s", e)
+        else:
             try:
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
