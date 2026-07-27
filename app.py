@@ -24,6 +24,7 @@ from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
     seed as tl_seed,
+    reseed as tl_reseed,
     add_activity as tl_add_activity,
     set_activity as tl_set_activity,
     update_to_date as tl_update,
@@ -1033,6 +1034,27 @@ def set_seeds():
     tl = get_training_load()
     logger.info("Seeds set: date=%s CTL=%.1f ATL=%.1f backfilled=%d days", seed_date, ctl, atl, backfilled)
     return jsonify({"ok": True, "seed_date": seed_date, "ctl": tl["ctl"], "atl": tl["atl"], "tsb": tl["tsb"], "backfilled_days": backfilled})
+
+
+@app.route("/reseed", methods=["POST"])
+def api_reseed():
+    """Re-anchor CTL/ATL to the watch's displayed EoD values. Body: {date, ctl, atl}"""
+    body = request.get_json(force=True) or {}
+    reseed_date = body.get("date") or utc_today_iso()
+    try:
+        ctl = float(body["ctl"])
+        atl = float(body["atl"])
+    except (KeyError, ValueError) as e:
+        return jsonify({"ok": False, "error": f"ctl and atl are required floats: {e}"}), 400
+    try:
+        tl_reseed(reseed_date, ctl, atl)
+        tl_update(utc_today_iso())
+    except Exception as e:
+        logger.exception("tl_reseed failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+    tl = get_training_load()
+    logger.info("Reseeded: date=%s CTL=%.1f ATL=%.1f", reseed_date, ctl, atl)
+    return jsonify({"ok": True, "reseed_date": reseed_date, "ctl": tl["ctl"], "atl": tl["atl"], "tsb": tl["tsb"]})
 
 
 @app.route("/recompute-trimp", methods=["POST"])

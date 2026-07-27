@@ -99,14 +99,16 @@ def _save_state(state: dict[str, Any], retries: int = 3) -> None:
 
 def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, float, int]:
     """
-    Recompute CTL/ATL/TSB from the seed through target_date_str.
+    Recompute CTL/ATL/TSB from the anchor through target_date_str.
+
+    Uses the reseed anchor (if one exists and target_date >= reseed_date) so
+    the app matches watch values by construction from that date forward.
+    Falls back to the original April seed for historical targets.
 
     Returns (ctl_eod, atl_eod, tsb_morning) where:
     - ctl_eod / atl_eod are end-of-day floats after target_date's update
-    - tsb_morning = round(ctl - atl) captured at the START of target_date's
-      iteration, before any load or decay is applied (the "morning" value)
+    - tsb_morning = lag-1 value captured before target_date's load/decay
     """
-    seed_d = date.fromisoformat(state["seed_date"])
     target_d = date.fromisoformat(target_date_str)
 
     load_by_date: dict[str, float] = {}
@@ -114,6 +116,35 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         if a["date"] >= state["seed_date"]:
             load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
 
+    reseed_date_str = state.get("reseed_date")
+    if reseed_date_str:
+        reseed_d = date.fromisoformat(reseed_date_str)
+        if reseed_d <= target_d:
+            # Reseed anchor stores EoD values for reseed_date.
+            ctl = float(state["reseed_ctl"])
+            atl = float(state["reseed_atl"])
+            # TSB for reseed_date: back-compute from EoD anchor (rest-day case).
+            if load_by_date.get(reseed_date_str, 0.0) == 0:
+                morning_tsb = round(ctl / _DECAY_CTL - atl / _DECAY_ATL)
+            else:
+                morning_tsb = round(ctl - atl)
+            cur = reseed_d + timedelta(days=1)
+            while cur <= target_d:
+                ds = cur.isoformat()
+                morning_tsb = round(ctl - atl)
+                load = load_by_date.get(ds, 0.0)
+                if load > 0:
+                    ctl += (load - ctl) * _K_CTL
+                    atl += (load - atl) * _K_ATL
+                    ctl *= _DECAY_CTL
+                    atl *= _DECAY_ATL
+                else:
+                    ctl *= _DECAY_CTL
+                    atl *= _DECAY_ATL
+                cur += timedelta(days=1)
+            return ctl, atl, morning_tsb
+
+    seed_d = date.fromisoformat(state["seed_date"])
     ctl = float(state["seed_ctl"])
     atl = float(state["seed_atl"])
     cur = seed_d
@@ -210,11 +241,38 @@ def set_activity(date_str: str, load: float) -> bool:
     return True
 
 
+def reseed(date_str: str, ctl: float, atl: float) -> None:
+    """
+    Re-anchor to the watch's displayed EoD values for date_str.
+
+    Stores {reseed_date, reseed_ctl, reseed_atl} alongside the original April
+    seed. _recompute() and history_series() use this anchor for date_str and
+    all future dates, while history before date_str continues to use the April
+    seed. Call monthly (or whenever drift appears) to keep the app aligned with
+    the watch without discarding backfill history.
+
+    Args:
+        date_str: ISO date the watch values were read, e.g. "2026-07-27"
+        ctl:      Watch's displayed CTL for that date (EoD value)
+        atl:      Watch's displayed ATL for that date (EoD value)
+    """
+    state = _load_state()
+    state["reseed_date"] = date_str
+    state["reseed_ctl"] = float(ctl)
+    state["reseed_atl"] = float(atl)
+    _save_state(state)
+    logger.info("training_load reseeded at %s: CTL=%.1f ATL=%.1f", date_str, ctl, atl)
+
+
 def history_series(target_date_str: str | None = None) -> dict[str, dict[str, float]]:
     """
     Return a per-day series {date_str: {ctl, atl, tsb}} from seed through
-    target_date_str (defaults to today).  Uses the same two-step Suunto
-    formula as _recompute — suitable for backfilling metrics.json history.
+    target_date_str (defaults to today).
+
+    If a reseed anchor exists:
+    - Dates before reseed_date use the original April seed (historical charts).
+    - reseed_date itself emits the anchor values directly.
+    - Dates after reseed_date compute forward from the anchor (matches watch).
     """
     state = _load_state()
     if not state.get("seed_date"):
@@ -231,24 +289,48 @@ def history_series(target_date_str: str | None = None) -> dict[str, dict[str, fl
         if a["date"] >= state["seed_date"]:
             load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
 
-    ctl = float(state["seed_ctl"])
-    atl = float(state["seed_atl"])
-    cur = seed_d
     out: dict[str, dict[str, float]] = {}
-    while cur <= target_d:
-        ds = cur.isoformat()
-        tsb_morning = ctl - atl
-        load = load_by_date.get(ds, 0.0)
-        if load > 0:
-            ctl += (load - ctl) * _K_CTL
-            atl += (load - atl) * _K_ATL
-            ctl *= _DECAY_CTL
-            atl *= _DECAY_ATL
+
+    def _run(start_ctl: float, start_atl: float, from_d: date, to_d: date) -> None:
+        ctl, atl = start_ctl, start_atl
+        cur = from_d
+        while cur <= to_d:
+            ds = cur.isoformat()
+            tsb_morning = ctl - atl
+            load = load_by_date.get(ds, 0.0)
+            if load > 0:
+                ctl += (load - ctl) * _K_CTL
+                atl += (load - atl) * _K_ATL
+                ctl *= _DECAY_CTL
+                atl *= _DECAY_ATL
+            else:
+                ctl *= _DECAY_CTL
+                atl *= _DECAY_ATL
+            out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
+            cur += timedelta(days=1)
+
+    reseed_date_str = state.get("reseed_date")
+    reseed_d = date.fromisoformat(reseed_date_str) if reseed_date_str else None
+
+    if reseed_d and reseed_d <= target_d:
+        # Segment 1: original seed → day before reseed
+        if reseed_d - timedelta(days=1) >= seed_d:
+            _run(float(state["seed_ctl"]), float(state["seed_atl"]),
+                 seed_d, reseed_d - timedelta(days=1))
+        # Reseed day: emit anchor values; derive lag-1 TSB by back-computing from EoD anchor.
+        r_ctl = float(state["reseed_ctl"])
+        r_atl = float(state["reseed_atl"])
+        if load_by_date.get(reseed_date_str, 0.0) == 0:
+            tsb_reseed = round(r_ctl / _DECAY_CTL - r_atl / _DECAY_ATL, 2)
         else:
-            ctl *= _DECAY_CTL
-            atl *= _DECAY_ATL
-        out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
-        cur += timedelta(days=1)
+            tsb_reseed = round(r_ctl - r_atl, 2)
+        out[reseed_date_str] = {"ctl": round(r_ctl, 2), "atl": round(r_atl, 2), "tsb": tsb_reseed}
+        # Segment 2: reseed + 1 → target
+        if reseed_d + timedelta(days=1) <= target_d:
+            _run(r_ctl, r_atl, reseed_d + timedelta(days=1), target_d)
+    else:
+        _run(float(state["seed_ctl"]), float(state["seed_atl"]), seed_d, target_d)
+
     return out
 
 
@@ -316,9 +398,25 @@ if __name__ == "__main__":
         tl = get_training_load()
         print(f"CTL: {tl['ctl']} | ATL: {tl['atl']} | TSB: {tl['tsb']} | Last updated: {tl['last_updated']}")
 
+    elif "--reseed" in args:
+        idx = args.index("--reseed")
+        value = args[idx + 1] if idx + 1 < len(args) else ""
+        parts = value.strip().split(",")
+        if len(parts) != 3:
+            print("Usage: python training_load.py --reseed YYYY-MM-DD,CTL,ATL")
+            sys.exit(1)
+        rd, rc, ra = parts[0].strip(), float(parts[1]), float(parts[2])
+        reseed(rd, rc, ra)
+        update_to_date(date.today().isoformat())
+        tl = get_training_load()
+        print(f"Reseeded: date={rd}  CTL={rc}  ATL={ra}")
+        print(f"Current:  CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
+
     elif "--dump" in args:
         state = _load_state()
         print(f"Seed: date={state.get('seed_date')}  CTL={state.get('seed_ctl')}  ATL={state.get('seed_atl')}")
+        if state.get("reseed_date"):
+            print(f"Reseed anchor: date={state['reseed_date']}  CTL={state['reseed_ctl']}  ATL={state['reseed_atl']}")
         print(f"Current: CTL={state.get('ctl')}  ATL={state.get('atl')}  TSB={state.get('tsb')}  updated={state.get('last_updated')}")
         acts = state.get("activities", [])
         print(f"\nActivities in training_load.json ({len(acts)} entries):")
