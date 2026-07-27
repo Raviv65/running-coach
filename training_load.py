@@ -418,6 +418,83 @@ if __name__ == "__main__":
             detail = "  ".join(f"load={e['load']:.2f}" for e in entries)
             print(f"  {ds}: total_load={total_load:.2f}  [{detail}]")
 
+    elif "--rebuild" in args:
+        # Full authoritative rebuild from metrics.json:
+        #   1. Clear reseed anchor (no longer needed once formula is correct)
+        #   2. Dedup activities by (date, round(tss, 1)) — collapses same-run duplicates
+        #   3. Wipe all existing activities and replace with deduplicated set
+        #   4. Recompute EWMA from seed and persist
+        # Safe to re-run any time — always produces the same result.
+        # Usage: python training_load.py --rebuild
+        #         python training_load.py --rebuild --through=2026-07-26
+        through = date.today().isoformat()
+        for a in args:
+            if a.startswith("--through="):
+                through = a.split("=", 1)[1].strip()
+
+        from storage import load_metrics as _load_metrics_gcs
+        state = _load_state()
+        if not state.get("seed_date"):
+            print("ERROR: no seed set. Run --seed first.")
+            sys.exit(1)
+
+        had_reseed = bool(state.get("reseed_date"))
+        for key in ("reseed_date", "reseed_ctl", "reseed_atl"):
+            state.pop(key, None)
+        if had_reseed:
+            print(f"Cleared reseed anchor.")
+
+        print(f"Seed: date={state['seed_date']}  CTL={state['seed_ctl']}  ATL={state['seed_atl']}")
+        print(f"Rebuilding from metrics.json through {through} ...")
+
+        db = _load_metrics_gcs()
+        acts = db.get("activities", {})
+
+        new_activities = []
+        deduped_count = 0
+        for day in sorted(acts.keys()):
+            if day <= state["seed_date"]:
+                continue
+            day_acts = acts[day]
+            seen_tss: set[float] = set()
+            day_total = 0.0
+            for a in day_acts:
+                tss = a.get("training_stress_score")
+                if tss is None:
+                    continue
+                tss_f = float(tss)
+                key_f = round(tss_f, 1)
+                if key_f in seen_tss:
+                    print(f"  {day}: DEDUP  tss={tss_f:.1f} (duplicate skipped)")
+                    deduped_count += 1
+                    continue
+                seen_tss.add(key_f)
+                day_total += tss_f
+            if day_total > 0:
+                new_activities.append({"date": day, "load": round(day_total, 2)})
+
+        state["activities"] = sorted(new_activities, key=lambda x: x["date"])
+        print(f"\n{len(new_activities)} activity day(s) loaded ({deduped_count} duplicate(s) removed)")
+        for a in state["activities"]:
+            print(f"  {a['date']}: load={a['load']:.2f}")
+
+        ctl, atl, tsb = _recompute(state, through)
+        state["ctl"] = ctl
+        state["atl"] = atl
+        state["tsb"] = tsb
+        state["last_updated"] = through
+        _save_state(state)
+        logger.info("training_load rebuilt through %s: CTL=%.2f ATL=%.2f TSB=%d",
+                    through, ctl, atl, tsb)
+
+        series = history_series(through)
+        sorted_days = sorted(series.keys())
+        print(f"\nLast 7 days of rebuilt series:")
+        for ds in sorted_days[-7:]:
+            v = series[ds]
+            print(f"  {ds}: CTL={v['ctl']:.2f}  ATL={v['atl']:.2f}  TSB={v['tsb']:.2f}")
+        print(f"\nResult: CTL={round(ctl)}  ATL={round(atl)}  TSB={tsb}")
+
     elif "--fix-from-metrics" in args:
         # Repair training_load.json using native TSS values already stored in metrics.json.
         # Use set_activity (not add_activity) so stale EPOC loads are replaced, not summed.
