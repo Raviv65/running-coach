@@ -289,7 +289,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
                     parsed_fit = parse_fit(raw_fit)
                     tss_fit = parsed_fit.get("training_stress_score")
                     if tss_fit is not None:
-                        if tl_set_activity(fit_date, float(tss_fit) * 1.45):
+                        if tl_set_activity(fit_date, float(tss_fit)):
                             logger.info("Pipeline: updated FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
                             synced += 1
                 except Exception as e:
@@ -301,7 +301,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
 
     # Use training_load.py as the single authoritative source for CTL/ATL/TSB history.
     # This ensures the chart and today's widget both use the two-step Suunto formula
-    # with TSS×1.45 loads — no more divergence between history and today.
+    # with native TSS loads — no more divergence between history and today.
     try:
         tl_update(today)
         tl_series = tl_history_series(today)
@@ -665,7 +665,7 @@ def upload_activity():
           (match.get("training_stress_score") if match else result.get("training_stress_score"))
     if filename.endswith(".fit") and tss is not None:
         try:
-            tl_set_activity(day, tss * 1.45)
+            tl_set_activity(day, tss)
             tl_update(utc_today_iso())
             tl = get_training_load()
             if tl["last_updated"]:
@@ -1026,7 +1026,7 @@ def set_seeds():
             continue
         day_tss = sum(a.get("training_stress_score") or a.get("suunto_tss") or 0 for a in acts if a.get("training_stress_score") or a.get("suunto_tss"))
         if day_tss > 0:
-            if tl_set_activity(day, day_tss * 1.45):
+            if tl_set_activity(day, day_tss):
                 backfilled += 1
     if backfilled:
         tl_update(utc_today_iso())

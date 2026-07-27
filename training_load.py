@@ -4,21 +4,16 @@ CTL / ATL / TSB training-load tracker matching Suunto's algorithm.
 State is stored in GCS as ``training_load.json`` (separate from metrics.json).
 
 Formula — applied once per calendar day, floats kept throughout:
-    Load = training_stress_score * 1.45  (from FIT session message)
-    k_ctl   = 1 - exp(-1/42)
-    k_atl   = 1 - exp(-1/7)
-    decay_ctl = exp(-1/42)
-    decay_atl = exp(-1/7)
+    Load = training_stress_score  (native FIT value, no scaling)
+    k_ctl = 1 - exp(-1/42)
+    k_atl = 1 - exp(-1/7)
 
-    Activity day:
-        ctl += (load - ctl) * k_ctl   # apply load
+    Every day (activity or rest):
+        ctl += (load - ctl) * k_ctl
         atl += (load - atl) * k_atl
-        ctl *= decay_ctl               # overnight decay
-        atl *= decay_atl
 
-    Rest day:
-        ctl *= decay_ctl               # overnight decay only
-        atl *= decay_atl
+    On rest days load=0, which reduces to: ctl *= (1 - k_ctl) = exp(-1/42)
+    — pure decay, no separate step needed.
 
     Multiple activities on the same day: sum their load before applying.
     Rounding happens only at display time in get_training_load().
@@ -51,10 +46,8 @@ logger = logging.getLogger(__name__)
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "running-coach-data-uplifted")
 _TL_OBJECT = "training_load.json"
 
-_K_CTL    = 1.0 - exp(-1.0 / 42.0)
-_K_ATL    = 1.0 - exp(-1.0 / 7.0)
-_DECAY_CTL = exp(-1.0 / 42.0)
-_DECAY_ATL = exp(-1.0 / 7.0)
+_K_CTL = 1.0 - exp(-1.0 / 42.0)
+_K_ATL = 1.0 - exp(-1.0 / 7.0)
 
 
 # ---------------------------------------------------------------------------
@@ -123,24 +116,14 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
             # Reseed anchor stores EoD values for reseed_date.
             ctl = float(state["reseed_ctl"])
             atl = float(state["reseed_atl"])
-            # TSB for reseed_date: back-compute from EoD anchor (rest-day case).
-            if load_by_date.get(reseed_date_str, 0.0) == 0:
-                morning_tsb = round(ctl / _DECAY_CTL - atl / _DECAY_ATL)
-            else:
-                morning_tsb = round(ctl - atl)
+            morning_tsb = round(ctl - atl)
             cur = reseed_d + timedelta(days=1)
             while cur <= target_d:
                 ds = cur.isoformat()
                 morning_tsb = round(ctl - atl)
                 load = load_by_date.get(ds, 0.0)
-                if load > 0:
-                    ctl += (load - ctl) * _K_CTL
-                    atl += (load - atl) * _K_ATL
-                    ctl *= _DECAY_CTL
-                    atl *= _DECAY_ATL
-                else:
-                    ctl *= _DECAY_CTL
-                    atl *= _DECAY_ATL
+                ctl += (load - ctl) * _K_CTL
+                atl += (load - atl) * _K_ATL
                 cur += timedelta(days=1)
             return ctl, atl, morning_tsb
 
@@ -153,14 +136,8 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         ds = cur.isoformat()
         morning_tsb = round(ctl - atl)  # before any update
         load = load_by_date.get(ds, 0.0)
-        if load > 0:
-            ctl += (load - ctl) * _K_CTL   # apply load
-            atl += (load - atl) * _K_ATL
-            ctl *= _DECAY_CTL               # overnight decay (Suunto two-step)
-            atl *= _DECAY_ATL
-        else:
-            ctl *= _DECAY_CTL
-            atl *= _DECAY_ATL
+        ctl += (load - ctl) * _K_CTL
+        atl += (load - atl) * _K_ATL
         cur += timedelta(days=1)
 
     return ctl, atl, morning_tsb
@@ -264,6 +241,21 @@ def reseed(date_str: str, ctl: float, atl: float) -> None:
     logger.info("training_load reseeded at %s: CTL=%.1f ATL=%.1f", date_str, ctl, atl)
 
 
+def clear_reseed() -> None:
+    """Remove any reseed anchor from GCS state, reverting to the original seed."""
+    state = _load_state()
+    changed = False
+    for key in ("reseed_date", "reseed_ctl", "reseed_atl"):
+        if key in state:
+            del state[key]
+            changed = True
+    if changed:
+        _save_state(state)
+        logger.info("training_load: reseed anchor cleared")
+    else:
+        logger.info("training_load: no reseed anchor to clear")
+
+
 def history_series(target_date_str: str | None = None) -> dict[str, dict[str, float]]:
     """
     Return a per-day series {date_str: {ctl, atl, tsb}} from seed through
@@ -298,14 +290,8 @@ def history_series(target_date_str: str | None = None) -> dict[str, dict[str, fl
             ds = cur.isoformat()
             tsb_morning = ctl - atl
             load = load_by_date.get(ds, 0.0)
-            if load > 0:
-                ctl += (load - ctl) * _K_CTL
-                atl += (load - atl) * _K_ATL
-                ctl *= _DECAY_CTL
-                atl *= _DECAY_ATL
-            else:
-                ctl *= _DECAY_CTL
-                atl *= _DECAY_ATL
+            ctl += (load - ctl) * _K_CTL
+            atl += (load - atl) * _K_ATL
             out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
             cur += timedelta(days=1)
 
@@ -320,10 +306,7 @@ def history_series(target_date_str: str | None = None) -> dict[str, dict[str, fl
         # Reseed day: emit anchor values; derive lag-1 TSB by back-computing from EoD anchor.
         r_ctl = float(state["reseed_ctl"])
         r_atl = float(state["reseed_atl"])
-        if load_by_date.get(reseed_date_str, 0.0) == 0:
-            tsb_reseed = round(r_ctl / _DECAY_CTL - r_atl / _DECAY_ATL, 2)
-        else:
-            tsb_reseed = round(r_ctl - r_atl, 2)
+        tsb_reseed = round(r_ctl - r_atl, 2)
         out[reseed_date_str] = {"ctl": round(r_ctl, 2), "atl": round(r_atl, 2), "tsb": tsb_reseed}
         # Segment 2: reseed + 1 → target
         if reseed_d + timedelta(days=1) <= target_d:
@@ -412,6 +395,12 @@ if __name__ == "__main__":
         print(f"Reseeded: date={rd}  CTL={rc}  ATL={ra}")
         print(f"Current:  CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
 
+    elif "--clear-reseed" in args:
+        clear_reseed()
+        update_to_date(date.today().isoformat())
+        tl = get_training_load()
+        print(f"Reseed anchor cleared. Current: CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
+
     elif "--dump" in args:
         state = _load_state()
         print(f"Seed: date={state.get('seed_date')}  CTL={state.get('seed_ctl')}  ATL={state.get('seed_atl')}")
@@ -425,10 +414,9 @@ if __name__ == "__main__":
             by_date[a["date"]] = by_date.get(a["date"], 0.0) + a["load"]
         for ds in sorted(by_date):
             total_load = by_date[ds]
-            tss_approx = round(total_load / 1.45, 1)
             entries = [a for a in acts if a["date"] == ds]
             detail = "  ".join(f"load={e['load']:.2f}" for e in entries)
-            print(f"  {ds}: total_load={total_load:.2f}  TSS≈{tss_approx}  [{detail}]")
+            print(f"  {ds}: total_load={total_load:.2f}  [{detail}]")
 
     elif "--fix-from-metrics" in args:
         # Repair training_load.json using native TSS values already stored in metrics.json.
@@ -456,7 +444,7 @@ if __name__ == "__main__":
             if day_tss <= 0:
                 skipped += 1
                 continue
-            load = round(day_tss * 1.45, 2)
+            load = round(day_tss, 2)
             if set_activity(day, load):
                 print(f"  {day}: UPDATED  load={load:.2f}  TSS={day_tss:.1f}")
                 changed += 1
@@ -505,7 +493,7 @@ if __name__ == "__main__":
                 if tss_val is None:
                     print(f"  {fd}: no TSS in FIT — skipped")
                     continue
-                correct_load = round(float(tss_val) * 1.45, 2)
+                correct_load = round(float(tss_val), 2)
                 current_load = round(stored_load.get(fd, 0.0), 2)
                 if abs(current_load - correct_load) >= 0.01:
                     set_activity(fd, correct_load)
@@ -523,9 +511,9 @@ if __name__ == "__main__":
         tl = get_training_load()
         print(f"\nResult for {target}:")
         print(f"  CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
-        print(f"  Expected: CTL≈32(±1)  ATL≈42(±1)  TSB≈-16(±2)")
+        print(f"  Expected (2026-07-26): CTL≈32(±1)  ATL≈41(±1)  TSB≈-9(±2)")
 
-        ok = (abs(tl['ctl'] - 32) <= 1 and abs(tl['atl'] - 42) <= 1 and abs(tl['tsb'] - (-16)) <= 2)
+        ok = (abs(tl['ctl'] - 32) <= 1 and abs(tl['atl'] - 41) <= 1 and abs(tl['tsb'] - (-9)) <= 2)
         if ok:
             print("PASS: within tolerance of watch values.")
         else:

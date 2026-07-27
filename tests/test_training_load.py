@@ -12,7 +12,7 @@ import os
 # Ensure repo root is on path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from training_load import _recompute, _K_CTL, _K_ATL, _DECAY_CTL, _DECAY_ATL
+from training_load import _recompute, _K_CTL, _K_ATL
 
 
 def _make_state(seed_date, seed_ctl, seed_atl, activities):
@@ -25,7 +25,7 @@ def _make_state(seed_date, seed_ctl, seed_atl, activities):
 
 
 def test_single_activity_then_rest():
-    """Day 1: one activity load=87; Day 2: rest. TSB for Day 2 is lag-1 (before decay)."""
+    """Day 1: one activity load=87; Day 2: rest. TSB for Day 2 is lag-1 (EoD of day 1)."""
     state = _make_state(
         "2026-01-01", 40.0, 40.0,
         [{"date": "2026-01-01", "load": 87.0}],
@@ -34,13 +34,13 @@ def test_single_activity_then_rest():
     # Day 1 end-of-day
     ctl1, atl1, tsb1 = _recompute(state, "2026-01-01")
 
-    # TSB day 1 is the morning value (before load + decay), i.e. seed_ctl - seed_atl
+    # TSB day 1 is the morning value (before update), i.e. seed_ctl - seed_atl
     assert tsb1 == round(40.0 - 40.0), f"Expected TSB=0 for day 1, got {tsb1}"
 
-    # Manually verify day 1 EoD
+    # Single-step formula: ctl += (load - ctl) * k
     load = 87.0
-    expected_ctl1 = (40.0 + (load - 40.0) * _K_CTL) * _DECAY_CTL
-    expected_atl1 = (40.0 + (load - 40.0) * _K_ATL) * _DECAY_ATL
+    expected_ctl1 = 40.0 + (load - 40.0) * _K_CTL
+    expected_atl1 = 40.0 + (load - 40.0) * _K_ATL
     assert abs(ctl1 - expected_ctl1) < 1e-9
     assert abs(atl1 - expected_atl1) < 1e-9
 
@@ -50,9 +50,9 @@ def test_single_activity_then_rest():
     # TSB day 2 = morning of day 2 = EoD of day 1 (ctl1 - atl1)
     assert tsb2 == round(ctl1 - atl1), f"TSB lag-1 failed: expected {round(ctl1 - atl1)}, got {tsb2}"
 
-    # Rest day: just decay
-    expected_ctl2 = ctl1 * _DECAY_CTL
-    expected_atl2 = atl1 * _DECAY_ATL
+    # Rest day (load=0): single-step reduces to ctl *= (1 - k_ctl)
+    expected_ctl2 = ctl1 * (1 - _K_CTL)
+    expected_atl2 = atl1 * (1 - _K_ATL)
     assert abs(ctl2 - expected_ctl2) < 1e-9
     assert abs(atl2 - expected_atl2) < 1e-9
 
@@ -115,9 +115,9 @@ def test_rest_day_zero_filled():
     # Day 2 should be a pure decay day (no load)
     ctl2, atl2, tsb2 = _recompute(state, "2026-01-02")
 
-    # Day 1: rest, day 2: rest
-    expected_ctl2 = 40.0 * _DECAY_CTL * _DECAY_CTL
-    expected_atl2 = 40.0 * _DECAY_ATL * _DECAY_ATL
+    # Day 1 (seed): rest. Day 2: rest. Single-step: each rest day multiplies by (1-k).
+    expected_ctl2 = 40.0 * (1 - _K_CTL) ** 2
+    expected_atl2 = 40.0 * (1 - _K_ATL) ** 2
     assert abs(ctl2 - expected_ctl2) < 1e-9, f"Rest-day zero-fill wrong: ctl={ctl2}, expected={expected_ctl2}"
     assert abs(atl2 - expected_atl2) < 1e-9
 
