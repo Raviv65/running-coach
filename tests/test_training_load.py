@@ -50,7 +50,7 @@ def test_single_activity_then_rest():
     # TSB day 2 = morning of day 2 = EoD of day 1 (ctl1 - atl1)
     assert tsb2 == round(ctl1 - atl1), f"TSB lag-1 failed: expected {round(ctl1 - atl1)}, got {tsb2}"
 
-    # Rest day (load=0): single-step reduces to ctl *= (1 - k_ctl)
+    # Rest day (load=0): single-step reduces to ctl *= (1 - k)
     expected_ctl2 = ctl1 * (1 - _K_CTL)
     expected_atl2 = atl1 * (1 - _K_ATL)
     assert abs(ctl2 - expected_ctl2) < 1e-9

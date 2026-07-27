@@ -92,16 +92,14 @@ def _save_state(state: dict[str, Any], retries: int = 3) -> None:
 
 def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, float, int]:
     """
-    Recompute CTL/ATL/TSB from the anchor through target_date_str.
-
-    Uses the reseed anchor (if one exists and target_date >= reseed_date) so
-    the app matches watch values by construction from that date forward.
-    Falls back to the original April seed for historical targets.
+    Recompute CTL/ATL/TSB from the seed through target_date_str.
 
     Returns (ctl_eod, atl_eod, tsb_morning) where:
     - ctl_eod / atl_eod are end-of-day floats after target_date's update
-    - tsb_morning = lag-1 value captured before target_date's load/decay
+    - tsb_morning = round(ctl - atl) captured at the START of target_date's
+      iteration, before any load or decay is applied (the "morning" value)
     """
+    seed_d = date.fromisoformat(state["seed_date"])
     target_d = date.fromisoformat(target_date_str)
 
     load_by_date: dict[str, float] = {}
@@ -109,25 +107,6 @@ def _recompute(state: dict[str, Any], target_date_str: str) -> tuple[float, floa
         if a["date"] >= state["seed_date"]:
             load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
 
-    reseed_date_str = state.get("reseed_date")
-    if reseed_date_str:
-        reseed_d = date.fromisoformat(reseed_date_str)
-        if reseed_d <= target_d:
-            # Reseed anchor stores EoD values for reseed_date.
-            ctl = float(state["reseed_ctl"])
-            atl = float(state["reseed_atl"])
-            morning_tsb = round(ctl - atl)
-            cur = reseed_d + timedelta(days=1)
-            while cur <= target_d:
-                ds = cur.isoformat()
-                morning_tsb = round(ctl - atl)
-                load = load_by_date.get(ds, 0.0)
-                ctl += (load - ctl) * _K_CTL
-                atl += (load - atl) * _K_ATL
-                cur += timedelta(days=1)
-            return ctl, atl, morning_tsb
-
-    seed_d = date.fromisoformat(state["seed_date"])
     ctl = float(state["seed_ctl"])
     atl = float(state["seed_atl"])
     cur = seed_d
@@ -169,11 +148,35 @@ def seed(date_str: str, ctl: float, atl: float) -> None:
     logger.info("training_load seeded: date=%s CTL=%.1f ATL=%.1f", date_str, ctl, atl)
 
 
+def set_activity(date_str: str, load: float) -> bool:
+    """
+    Set the authoritative FIT-native load for a date, replacing ALL existing
+    entries. Unlike add_activity, always produces exactly one entry per date.
+    Returns True if anything changed.
+    """
+    state = _load_state()
+    if not state.get("seed_date"):
+        logger.warning("training_load: set_activity called before seed — ignoring")
+        return False
+    if date_str < state["seed_date"]:
+        return False
+    activities = state.setdefault("activities", [])
+    load_f = round(float(load), 2)
+    current = round(sum(a["load"] for a in activities if a["date"] == date_str), 2)
+    if abs(current - load_f) < 0.01:
+        return False
+    state["activities"] = [a for a in activities if a["date"] != date_str]
+    state["activities"].append({"date": date_str, "load": load_f})
+    state["activities"].sort(key=lambda a: a["date"])
+    _save_state(state)
+    logger.info("training_load: set activity date=%s load=%.2f (was %.2f)", date_str, load_f, current)
+    return True
+
+
 def add_activity(date_str: str, load: float) -> bool:
     """
     Register a FIT upload's load. Idempotent — skips if the same date+load
     already exists (within 0.01). Returns True if a new entry was added.
-    Use set_activity() when uploading FIT files to replace stale approximations.
     """
     state = _load_state()
     if not state.get("seed_date"):
@@ -193,78 +196,10 @@ def add_activity(date_str: str, load: float) -> bool:
     return True
 
 
-def set_activity(date_str: str, load: float) -> bool:
-    """
-    Set the authoritative FIT-native load for a date, replacing ALL existing
-    entries (including stale EPOC approximations). Unlike add_activity, this
-    always produces exactly one entry per date. Returns True if anything changed.
-    """
-    state = _load_state()
-    if not state.get("seed_date"):
-        logger.warning("training_load: set_activity called before seed — ignoring")
-        return False
-    if date_str < state["seed_date"]:
-        return False
-    activities = state.setdefault("activities", [])
-    load_f = round(float(load), 2)
-    current = round(sum(a["load"] for a in activities if a["date"] == date_str), 2)
-    if abs(current - load_f) < 0.01:
-        return False  # already correct
-    state["activities"] = [a for a in activities if a["date"] != date_str]
-    state["activities"].append({"date": date_str, "load": load_f})
-    state["activities"].sort(key=lambda a: a["date"])
-    _save_state(state)
-    logger.info("training_load: set activity date=%s load=%.2f (was %.2f)", date_str, load_f, current)
-    return True
-
-
-def reseed(date_str: str, ctl: float, atl: float) -> None:
-    """
-    Re-anchor to the watch's displayed EoD values for date_str.
-
-    Stores {reseed_date, reseed_ctl, reseed_atl} alongside the original April
-    seed. _recompute() and history_series() use this anchor for date_str and
-    all future dates, while history before date_str continues to use the April
-    seed. Call monthly (or whenever drift appears) to keep the app aligned with
-    the watch without discarding backfill history.
-
-    Args:
-        date_str: ISO date the watch values were read, e.g. "2026-07-27"
-        ctl:      Watch's displayed CTL for that date (EoD value)
-        atl:      Watch's displayed ATL for that date (EoD value)
-    """
-    state = _load_state()
-    state["reseed_date"] = date_str
-    state["reseed_ctl"] = float(ctl)
-    state["reseed_atl"] = float(atl)
-    _save_state(state)
-    logger.info("training_load reseeded at %s: CTL=%.1f ATL=%.1f", date_str, ctl, atl)
-
-
-def clear_reseed() -> None:
-    """Remove any reseed anchor from GCS state, reverting to the original seed."""
-    state = _load_state()
-    changed = False
-    for key in ("reseed_date", "reseed_ctl", "reseed_atl"):
-        if key in state:
-            del state[key]
-            changed = True
-    if changed:
-        _save_state(state)
-        logger.info("training_load: reseed anchor cleared")
-    else:
-        logger.info("training_load: no reseed anchor to clear")
-
-
 def history_series(target_date_str: str | None = None) -> dict[str, dict[str, float]]:
     """
     Return a per-day series {date_str: {ctl, atl, tsb}} from seed through
     target_date_str (defaults to today).
-
-    If a reseed anchor exists:
-    - Dates before reseed_date use the original April seed (historical charts).
-    - reseed_date itself emits the anchor values directly.
-    - Dates after reseed_date compute forward from the anchor (matches watch).
     """
     state = _load_state()
     if not state.get("seed_date"):
@@ -281,39 +216,18 @@ def history_series(target_date_str: str | None = None) -> dict[str, dict[str, fl
         if a["date"] >= state["seed_date"]:
             load_by_date[a["date"]] = load_by_date.get(a["date"], 0.0) + a["load"]
 
+    ctl = float(state["seed_ctl"])
+    atl = float(state["seed_atl"])
+    cur = seed_d
     out: dict[str, dict[str, float]] = {}
-
-    def _run(start_ctl: float, start_atl: float, from_d: date, to_d: date) -> None:
-        ctl, atl = start_ctl, start_atl
-        cur = from_d
-        while cur <= to_d:
-            ds = cur.isoformat()
-            tsb_morning = ctl - atl
-            load = load_by_date.get(ds, 0.0)
-            ctl += (load - ctl) * _K_CTL
-            atl += (load - atl) * _K_ATL
-            out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
-            cur += timedelta(days=1)
-
-    reseed_date_str = state.get("reseed_date")
-    reseed_d = date.fromisoformat(reseed_date_str) if reseed_date_str else None
-
-    if reseed_d and reseed_d <= target_d:
-        # Segment 1: original seed → day before reseed
-        if reseed_d - timedelta(days=1) >= seed_d:
-            _run(float(state["seed_ctl"]), float(state["seed_atl"]),
-                 seed_d, reseed_d - timedelta(days=1))
-        # Reseed day: emit anchor values; derive lag-1 TSB by back-computing from EoD anchor.
-        r_ctl = float(state["reseed_ctl"])
-        r_atl = float(state["reseed_atl"])
-        tsb_reseed = round(r_ctl - r_atl, 2)
-        out[reseed_date_str] = {"ctl": round(r_ctl, 2), "atl": round(r_atl, 2), "tsb": tsb_reseed}
-        # Segment 2: reseed + 1 → target
-        if reseed_d + timedelta(days=1) <= target_d:
-            _run(r_ctl, r_atl, reseed_d + timedelta(days=1), target_d)
-    else:
-        _run(float(state["seed_ctl"]), float(state["seed_atl"]), seed_d, target_d)
-
+    while cur <= target_d:
+        ds = cur.isoformat()
+        tsb_morning = ctl - atl
+        load = load_by_date.get(ds, 0.0)
+        ctl += (load - ctl) * _K_CTL
+        atl += (load - atl) * _K_ATL
+        out[ds] = {"ctl": round(ctl, 2), "atl": round(atl, 2), "tsb": round(tsb_morning, 2)}
+        cur += timedelta(days=1)
     return out
 
 
@@ -381,25 +295,21 @@ if __name__ == "__main__":
         tl = get_training_load()
         print(f"CTL: {tl['ctl']} | ATL: {tl['atl']} | TSB: {tl['tsb']} | Last updated: {tl['last_updated']}")
 
-    elif "--reseed" in args:
-        idx = args.index("--reseed")
-        value = args[idx + 1] if idx + 1 < len(args) else ""
-        parts = value.strip().split(",")
-        if len(parts) != 3:
-            print("Usage: python training_load.py --reseed YYYY-MM-DD,CTL,ATL")
-            sys.exit(1)
-        rd, rc, ra = parts[0].strip(), float(parts[1]), float(parts[2])
-        reseed(rd, rc, ra)
-        update_to_date(date.today().isoformat())
-        tl = get_training_load()
-        print(f"Reseeded: date={rd}  CTL={rc}  ATL={ra}")
-        print(f"Current:  CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
-
     elif "--clear-reseed" in args:
-        clear_reseed()
+        state = _load_state()
+        changed = False
+        for key in ("reseed_date", "reseed_ctl", "reseed_atl"):
+            if key in state:
+                del state[key]
+                changed = True
+        if changed:
+            _save_state(state)
+            print("Reseed anchor cleared.")
+        else:
+            print("No reseed anchor found.")
         update_to_date(date.today().isoformat())
         tl = get_training_load()
-        print(f"Reseed anchor cleared. Current: CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
+        print(f"Current: CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
 
     elif "--dump" in args:
         state = _load_state()
@@ -408,23 +318,21 @@ if __name__ == "__main__":
             print(f"Reseed anchor: date={state['reseed_date']}  CTL={state['reseed_ctl']}  ATL={state['reseed_atl']}")
         print(f"Current: CTL={state.get('ctl')}  ATL={state.get('atl')}  TSB={state.get('tsb')}  updated={state.get('last_updated')}")
         acts = state.get("activities", [])
-        print(f"\nActivities in training_load.json ({len(acts)} entries):")
+        print(f"\nActivities ({len(acts)} entries):")
         by_date: dict[str, float] = {}
         for a in acts:
             by_date[a["date"]] = by_date.get(a["date"], 0.0) + a["load"]
         for ds in sorted(by_date):
-            total_load = by_date[ds]
             entries = [a for a in acts if a["date"] == ds]
             detail = "  ".join(f"load={e['load']:.2f}" for e in entries)
-            print(f"  {ds}: total_load={total_load:.2f}  [{detail}]")
+            print(f"  {ds}: total={by_date[ds]:.2f}  [{detail}]")
 
     elif "--rebuild" in args:
         # Full authoritative rebuild from metrics.json:
-        #   1. Clear reseed anchor (no longer needed once formula is correct)
-        #   2. Dedup activities by (date, round(tss, 1)) — collapses same-run duplicates
-        #   3. Wipe all existing activities and replace with deduplicated set
-        #   4. Recompute EWMA from seed and persist
-        # Safe to re-run any time — always produces the same result.
+        #   1. Clear any reseed anchor
+        #   2. Dedup by (date, round(tss,1)) — collapses same-run duplicates
+        #   3. Replace all activities with deduplicated set
+        #   4. Recompute single-step EWMA from seed and persist
         # Usage: python training_load.py --rebuild
         #         python training_load.py --rebuild --through=2026-07-26
         through = date.today().isoformat()
@@ -442,23 +350,21 @@ if __name__ == "__main__":
         for key in ("reseed_date", "reseed_ctl", "reseed_atl"):
             state.pop(key, None)
         if had_reseed:
-            print(f"Cleared reseed anchor.")
+            print("Cleared reseed anchor.")
 
         print(f"Seed: date={state['seed_date']}  CTL={state['seed_ctl']}  ATL={state['seed_atl']}")
         print(f"Rebuilding from metrics.json through {through} ...")
 
         db = _load_metrics_gcs()
         acts = db.get("activities", {})
-
         new_activities = []
         deduped_count = 0
         for day in sorted(acts.keys()):
             if day <= state["seed_date"]:
                 continue
-            day_acts = acts[day]
             seen_tss: set[float] = set()
             day_total = 0.0
-            for a in day_acts:
+            for a in acts[day]:
                 tss = a.get("training_stress_score")
                 if tss is None:
                     continue
@@ -474,7 +380,7 @@ if __name__ == "__main__":
                 new_activities.append({"date": day, "load": round(day_total, 2)})
 
         state["activities"] = sorted(new_activities, key=lambda x: x["date"])
-        print(f"\n{len(new_activities)} activity day(s) loaded ({deduped_count} duplicate(s) removed)")
+        print(f"\n{len(new_activities)} activity day(s) ({deduped_count} duplicate(s) removed)")
         for a in state["activities"]:
             print(f"  {a['date']}: load={a['load']:.2f}")
 
@@ -484,27 +390,22 @@ if __name__ == "__main__":
         state["tsb"] = tsb
         state["last_updated"] = through
         _save_state(state)
-        logger.info("training_load rebuilt through %s: CTL=%.2f ATL=%.2f TSB=%d",
-                    through, ctl, atl, tsb)
 
         series = history_series(through)
         sorted_days = sorted(series.keys())
-        print(f"\nLast 7 days of rebuilt series:")
+        print(f"\nLast 7 days:")
         for ds in sorted_days[-7:]:
             v = series[ds]
             print(f"  {ds}: CTL={v['ctl']:.2f}  ATL={v['atl']:.2f}  TSB={v['tsb']:.2f}")
         print(f"\nResult: CTL={round(ctl)}  ATL={round(atl)}  TSB={tsb}")
 
     elif "--fix-from-metrics" in args:
-        # Repair training_load.json using native TSS values already stored in metrics.json.
-        # Use set_activity (not add_activity) so stale EPOC loads are replaced, not summed.
         from storage import load_metrics as _load_metrics_gcs
         state = _load_state()
         if not state.get("seed_date"):
             print("ERROR: no seed set. Run --seed first.")
             sys.exit(1)
         print(f"Seed: date={state['seed_date']}  CTL={state['seed_ctl']}  ATL={state['seed_atl']}")
-
         db = _load_metrics_gcs()
         acts = db.get("activities", {})
         changed = 0
@@ -512,10 +413,9 @@ if __name__ == "__main__":
         for day in sorted(acts.keys()):
             if day <= state["seed_date"]:
                 continue
-            day_acts = acts[day]
             day_tss = sum(
                 float(a["training_stress_score"])
-                for a in day_acts
+                for a in acts[day]
                 if a.get("training_stress_score") is not None
             )
             if day_tss <= 0:
@@ -527,17 +427,12 @@ if __name__ == "__main__":
                 changed += 1
             else:
                 print(f"  {day}: OK       load={load:.2f}  TSS={day_tss:.1f}")
-
-        print(f"\n{changed} date(s) updated, {skipped} date(s) skipped (no TSS in metrics.json)")
-        if changed or True:
-            update_to_date(date.today().isoformat())
+        print(f"\n{changed} updated, {skipped} skipped (no TSS)")
+        update_to_date(date.today().isoformat())
         tl = get_training_load()
         print(f"Result: CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
 
     elif "--validate" in args:
-        # Validate GCS backfill: load all FIT files from GCS, compute series,
-        # assert today's values match the watch (CTL≈32, ATL≈42, TSB≈-16 as of 2026-07-26).
-        # Usage: python training_load.py --validate [YYYY-MM-DD]
         idx = args.index("--validate")
         target = args[idx + 1] if idx + 1 < len(args) and not args[idx + 1].startswith("--") else date.today().isoformat()
 
@@ -557,7 +452,7 @@ if __name__ == "__main__":
             if a["date"] >= state["seed_date"]:
                 stored_load[a["date"]] = stored_load.get(a["date"], 0.0) + a["load"]
 
-        print(f"Checking {len(fit_dates)} GCS FIT file(s) against training_load.json ...")
+        print(f"Checking {len(fit_dates)} GCS FIT file(s) ...")
         changed_any = False
         for fd in sorted(fit_dates):
             raw = download_fit_from_gcs(fd)
@@ -568,7 +463,7 @@ if __name__ == "__main__":
                 pf = parse_fit(raw)
                 tss_val = pf.get("training_stress_score")
                 if tss_val is None:
-                    print(f"  {fd}: no TSS in FIT — skipped")
+                    print(f"  {fd}: no TSS — skipped")
                     continue
                 correct_load = round(float(tss_val), 2)
                 current_load = round(stored_load.get(fd, 0.0), 2)
@@ -581,9 +476,6 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"  {fd}: parse error — {e}")
 
-        if changed_any:
-            state = _load_state()  # reload after fixes
-
         update_to_date(target)
         tl = get_training_load()
         print(f"\nResult for {target}:")
@@ -592,12 +484,11 @@ if __name__ == "__main__":
 
         ok = (abs(tl['ctl'] - 32) <= 1 and abs(tl['atl'] - 41) <= 1 and abs(tl['tsb'] - (-9)) <= 2)
         if ok:
-            print("PASS: within tolerance of watch values.")
+            print("PASS")
         else:
-            print("FAIL: outside tolerance — printing daily series:")
-            series = history_series(target)
-            for d in sorted(series.keys()):
-                v = series[d]
+            print("FAIL — daily series:")
+            for d in sorted(history_series(target).keys()):
+                v = history_series(target)[d]
                 print(f"  {d}: CTL={v['ctl']:.2f} ATL={v['atl']:.2f} TSB={v['tsb']:.2f}")
         sys.exit(0 if ok else 1)
 

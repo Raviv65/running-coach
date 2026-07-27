@@ -24,7 +24,6 @@ from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
     seed as tl_seed,
-    reseed as tl_reseed,
     add_activity as tl_add_activity,
     set_activity as tl_set_activity,
     update_to_date as tl_update,
@@ -276,31 +275,30 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         series = fwd_series  # keep for ramp_rate / ac_ratio lookups
     # else: series already set above
 
-    # Task 2: Sync ALL FIT files from GCS into training_load (idempotent via set_activity).
-    # set_activity replaces any stale EPOC-based load; no-op if load already correct.
+    # Task 2: Sync any FIT files from GCS not yet registered in training_load (idempotent).
     gcs_fit_dates: set[str] = set()
     try:
         gcs_fit_dates = list_fit_dates_from_gcs()
-        synced = 0
-        for fit_date in sorted(gcs_fit_dates):
+        reg_dates = registered_activity_dates()
+        new_fit_dates = sorted(gcs_fit_dates - reg_dates)
+        for fit_date in new_fit_dates:
             raw_fit = download_fit_from_gcs(fit_date)
             if raw_fit:
                 try:
                     parsed_fit = parse_fit(raw_fit)
                     tss_fit = parsed_fit.get("training_stress_score")
                     if tss_fit is not None:
-                        if tl_set_activity(fit_date, float(tss_fit)):
-                            logger.info("Pipeline: updated FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
-                            synced += 1
+                        tl_set_activity(fit_date, float(tss_fit))
+                        logger.info("Pipeline: registered FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
                 except Exception as e:
                     logger.warning("Pipeline: failed to parse GCS FIT for %s: %s", fit_date, e)
-        if synced:
-            logger.info("Pipeline: corrected load for %d FIT(s) from GCS", synced)
+        if new_fit_dates:
+            logger.info("Pipeline: synced %d new FIT(s) from GCS", len(new_fit_dates))
     except Exception as e:
         logger.warning("Pipeline: FIT GCS sync failed: %s", e)
 
     # Use training_load.py as the single authoritative source for CTL/ATL/TSB history.
-    # This ensures the chart and today's widget both use the two-step Suunto formula
+    # This ensures the chart and today's widget both use the single-step Banister formula
     # with native TSS loads — no more divergence between history and today.
     try:
         tl_update(today)
@@ -630,18 +628,9 @@ def upload_activity():
         None,
     )
     if match:
-        # Activity already stored with hr_timeseries.
-        # For FIT uploads always overwrite TSS with the native FIT value (replaces stale EPOC approx).
-        if filename.endswith(".fit") and result.get("training_stress_score") is not None:
+        # Activity already stored with hr_timeseries — patch training_stress_score if missing.
+        if result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
             match["training_stress_score"] = result["training_stress_score"]
-        elif result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
-            match["training_stress_score"] = result["training_stress_score"]
-        # Save FIT to GCS even on re-upload so --validate can always check it.
-        if filename.endswith(".fit"):
-            try:
-                save_activity_fit_to_gcs(raw_bytes, day)
-            except Exception as e:
-                logger.warning("Could not save FIT to GCS: %s", e)
     else:
         acts[day] = [
             a for a in existing
@@ -660,9 +649,8 @@ def upload_activity():
                 save_activity_json_to_gcs(raw_bytes, day)
             except Exception as e:
                 logger.warning("Could not save activity JSON to GCS: %s", e)
-    # Register FIT load — always use native FIT TSS (set_activity replaces any stale EPOC load).
-    tss = result.get("training_stress_score") if filename.endswith(".fit") else \
-          (match.get("training_stress_score") if match else result.get("training_stress_score"))
+    # Register FIT load (native training_stress_score) — runs whether activity was new or patched.
+    tss = (match.get("training_stress_score") if match else result.get("training_stress_score"))
     if filename.endswith(".fit") and tss is not None:
         try:
             tl_set_activity(day, tss)
@@ -1034,27 +1022,6 @@ def set_seeds():
     tl = get_training_load()
     logger.info("Seeds set: date=%s CTL=%.1f ATL=%.1f backfilled=%d days", seed_date, ctl, atl, backfilled)
     return jsonify({"ok": True, "seed_date": seed_date, "ctl": tl["ctl"], "atl": tl["atl"], "tsb": tl["tsb"], "backfilled_days": backfilled})
-
-
-@app.route("/reseed", methods=["POST"])
-def api_reseed():
-    """Re-anchor CTL/ATL to the watch's displayed EoD values. Body: {date, ctl, atl}"""
-    body = request.get_json(force=True) or {}
-    reseed_date = body.get("date") or utc_today_iso()
-    try:
-        ctl = float(body["ctl"])
-        atl = float(body["atl"])
-    except (KeyError, ValueError) as e:
-        return jsonify({"ok": False, "error": f"ctl and atl are required floats: {e}"}), 400
-    try:
-        tl_reseed(reseed_date, ctl, atl)
-        tl_update(utc_today_iso())
-    except Exception as e:
-        logger.exception("tl_reseed failed")
-        return jsonify({"ok": False, "error": str(e)}), 500
-    tl = get_training_load()
-    logger.info("Reseeded: date=%s CTL=%.1f ATL=%.1f", reseed_date, ctl, atl)
-    return jsonify({"ok": True, "reseed_date": reseed_date, "ctl": tl["ctl"], "atl": tl["atl"], "tsb": tl["tsb"]})
 
 
 @app.route("/recompute-trimp", methods=["POST"])
