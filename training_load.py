@@ -316,6 +316,61 @@ if __name__ == "__main__":
         tl = get_training_load()
         print(f"CTL: {tl['ctl']} | ATL: {tl['atl']} | TSB: {tl['tsb']} | Last updated: {tl['last_updated']}")
 
+    elif "--dump" in args:
+        state = _load_state()
+        print(f"Seed: date={state.get('seed_date')}  CTL={state.get('seed_ctl')}  ATL={state.get('seed_atl')}")
+        print(f"Current: CTL={state.get('ctl')}  ATL={state.get('atl')}  TSB={state.get('tsb')}  updated={state.get('last_updated')}")
+        acts = state.get("activities", [])
+        print(f"\nActivities in training_load.json ({len(acts)} entries):")
+        by_date: dict[str, float] = {}
+        for a in acts:
+            by_date[a["date"]] = by_date.get(a["date"], 0.0) + a["load"]
+        for ds in sorted(by_date):
+            total_load = by_date[ds]
+            tss_approx = round(total_load / 1.45, 1)
+            entries = [a for a in acts if a["date"] == ds]
+            detail = "  ".join(f"load={e['load']:.2f}" for e in entries)
+            print(f"  {ds}: total_load={total_load:.2f}  TSS≈{tss_approx}  [{detail}]")
+
+    elif "--fix-from-metrics" in args:
+        # Repair training_load.json using native TSS values already stored in metrics.json.
+        # Use set_activity (not add_activity) so stale EPOC loads are replaced, not summed.
+        from storage import load_metrics as _load_metrics_gcs
+        state = _load_state()
+        if not state.get("seed_date"):
+            print("ERROR: no seed set. Run --seed first.")
+            sys.exit(1)
+        print(f"Seed: date={state['seed_date']}  CTL={state['seed_ctl']}  ATL={state['seed_atl']}")
+
+        db = _load_metrics_gcs()
+        acts = db.get("activities", {})
+        changed = 0
+        skipped = 0
+        for day in sorted(acts.keys()):
+            if day <= state["seed_date"]:
+                continue
+            day_acts = acts[day]
+            day_tss = sum(
+                float(a["training_stress_score"])
+                for a in day_acts
+                if a.get("training_stress_score") is not None
+            )
+            if day_tss <= 0:
+                skipped += 1
+                continue
+            load = round(day_tss * 1.45, 2)
+            if set_activity(day, load):
+                print(f"  {day}: UPDATED  load={load:.2f}  TSS={day_tss:.1f}")
+                changed += 1
+            else:
+                print(f"  {day}: OK       load={load:.2f}  TSS={day_tss:.1f}")
+
+        print(f"\n{changed} date(s) updated, {skipped} date(s) skipped (no TSS in metrics.json)")
+        if changed or True:
+            update_to_date(date.today().isoformat())
+        tl = get_training_load()
+        print(f"Result: CTL={tl['ctl']}  ATL={tl['atl']}  TSB={tl['tsb']}")
+
     elif "--validate" in args:
         # Validate GCS backfill: load all FIT files from GCS, compute series,
         # assert today's values match the watch (CTL≈32, ATL≈42, TSB≈-16 as of 2026-07-26).

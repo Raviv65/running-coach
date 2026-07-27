@@ -275,25 +275,26 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         series = fwd_series  # keep for ramp_rate / ac_ratio lookups
     # else: series already set above
 
-    # Task 2: Sync any FIT files from GCS not yet registered in training_load (idempotent).
+    # Task 2: Sync ALL FIT files from GCS into training_load (idempotent via set_activity).
+    # set_activity replaces any stale EPOC-based load; no-op if load already correct.
     gcs_fit_dates: set[str] = set()
     try:
         gcs_fit_dates = list_fit_dates_from_gcs()
-        reg_dates = registered_activity_dates()
-        new_fit_dates = sorted(gcs_fit_dates - reg_dates)
-        for fit_date in new_fit_dates:
+        synced = 0
+        for fit_date in sorted(gcs_fit_dates):
             raw_fit = download_fit_from_gcs(fit_date)
             if raw_fit:
                 try:
                     parsed_fit = parse_fit(raw_fit)
                     tss_fit = parsed_fit.get("training_stress_score")
                     if tss_fit is not None:
-                        tl_add_activity(fit_date, float(tss_fit) * 1.45)
-                        logger.info("Pipeline: registered FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
+                        if tl_set_activity(fit_date, float(tss_fit) * 1.45):
+                            logger.info("Pipeline: updated FIT load for %s (TSS=%.1f)", fit_date, tss_fit)
+                            synced += 1
                 except Exception as e:
                     logger.warning("Pipeline: failed to parse GCS FIT for %s: %s", fit_date, e)
-        if new_fit_dates:
-            logger.info("Pipeline: synced %d new FIT(s) from GCS", len(new_fit_dates))
+        if synced:
+            logger.info("Pipeline: corrected load for %d FIT(s) from GCS", synced)
     except Exception as e:
         logger.warning("Pipeline: FIT GCS sync failed: %s", e)
 
@@ -634,6 +635,12 @@ def upload_activity():
             match["training_stress_score"] = result["training_stress_score"]
         elif result.get("training_stress_score") is not None and match.get("training_stress_score") is None:
             match["training_stress_score"] = result["training_stress_score"]
+        # Save FIT to GCS even on re-upload so --validate can always check it.
+        if filename.endswith(".fit"):
+            try:
+                save_activity_fit_to_gcs(raw_bytes, day)
+            except Exception as e:
+                logger.warning("Could not save FIT to GCS: %s", e)
     else:
         acts[day] = [
             a for a in existing
@@ -1018,7 +1025,7 @@ def set_seeds():
             continue
         day_tss = sum(a.get("training_stress_score") or a.get("suunto_tss") or 0 for a in acts if a.get("training_stress_score") or a.get("suunto_tss"))
         if day_tss > 0:
-            if tl_add_activity(day, day_tss * 1.45):
+            if tl_set_activity(day, day_tss * 1.45):
                 backfilled += 1
     if backfilled:
         tl_update(utc_today_iso())
