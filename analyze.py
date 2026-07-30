@@ -11,9 +11,12 @@ import anthropic
 
 ATHLETE_PROFILE = """
 Athlete: Raviv | Location: Israel
-Primary Goal: Run 10 km in 60 minutes (10 km/h)
+Long-term goal: Run 10 km in 60 minutes (10 km/h)
 Current estimate: 10 km in ~73–77 min — gap of ~13–17 min to close
-Training: 3 runs/week (treadmill) + hiking as cross-training (counts toward load)
+CURRENT PHASE (until 2026-08-28): Trek-prep block — Carros de Foc circuit (6 days, ~60 km, ~3620 m ascent starts 2026-08-28).
+  Priority: descending/climbing/time-on-feet over 10k speed development.
+  Nutrition: fat-loss calorie deficit, easing toward maintenance from ~2026-08-09.
+Training: 3 sessions/week — treadmill runs + hill/pack walks as trek prep (both count toward load)
 Max HR: ~160 bpm | Aerobic base HR: 130–135 bpm | Threshold HR: 155–160 bpm
 Cardiac drift: typically 6–10 bpm over 40 min (target: reduce below 5 bpm)
 HRV range: 23–40 | Average: ~29–33 | High HRV = green light for quality work
@@ -22,9 +25,10 @@ Performs best when: HRV >= 30, TSB between -5 and 0, sleep quality high
 Strengths: aerobic base, pacing discipline, consistency, data-driven approach
 Weaknesses: speed endurance, moderate cardiac drift, threshold underdeveloped
 Injury history: none
-Typical session: 10 min warmup @ 6.3 km/h → 40 min @ 7.4 km/h → 10-15 min @ 8.0-8.2 km/h → 5 min cooldown
+Typical run: 10 min warmup @ 6.3 km/h → 40 min @ 7.4 km/h → 10-15 min @ 8.0-8.2 km/h → 5 min cooldown
 Development priorities: extend duration at 8.0-8.5 km/h, tempo runs, intervals at 9-10 km/h, reduce cardiac drift
-Weekly structure: Easy run / Steady run / Quality run / Hiking
+Weekly structure: Easy run / Steady run / Quality run / Hill or pack walk
+INTENSITY POLICY: HRV/TSB recovery gates apply to HIGH-intensity runs (threshold, intervals). Hill walks and pack walks are LOW intensity — never block them with the same HRV/TSB thresholds as hard runs. Check the planned session's intensity before applying any gate.
 """
 
 
@@ -54,7 +58,9 @@ def build_prompt(db: dict[str, Any], today: str, context: str = "") -> str:
     ztext = ", ".join(f"{k}: {v}" for k, v in zones.items())
 
     from datetime import date as _date
-    today_weekday = _date.fromisoformat(today).strftime("%A")
+    today_d_local = _date.fromisoformat(today)
+    today_weekday = today_d_local.strftime("%A")
+    today_formatted = today_d_local.strftime("%-d %B %Y")  # e.g. "29 July 2026"
 
     m = (db.get("metrics") or {}).get(today) or {}
     metrics_sorted = sorted((db.get("metrics") or {}).keys())
@@ -84,6 +90,10 @@ def build_prompt(db: dict[str, Any], today: str, context: str = "") -> str:
 
     context_section = f"\n{context}\n" if context else ""
     prompt = f"""You are an expert running coach. Produce TODAY's training briefing for {name}.
+
+BRIEFING DATE: {today_weekday}, {today_formatted} (ISO: {today}). This is the date of THIS briefing — do not add or subtract any days.
+Start your response with EXACTLY this heading (copy it verbatim):
+# Daily Briefing — {today_weekday}, {today_formatted}
 {context_section}
 ## ATHLETE PROFILE
 {ATHLETE_PROFILE}
@@ -133,8 +143,8 @@ Easier alternative with pace (km/h) + HR range.
 ## What to avoid
 Bullet list.
 
-## Tomorrow outlook
-Short paragraph.
+## Next session outlook
+Short paragraph about the next planned session (check the PLANNED SESSIONS section in context for what's scheduled tomorrow).
 
 Be specific with numbers. Do not invent raw metrics not shown; if a metric is null, acknowledge uncertainty."""
     return prompt

@@ -12,6 +12,7 @@ import os
 import tempfile
 import traceback
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -19,7 +20,7 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
-from context_builder import build_context, save_briefing, load_athlete_profile
+from context_builder import build_context, save_briefing, load_athlete_profile, load_plan, save_plan
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
@@ -76,7 +77,7 @@ def datefmt(value: str) -> str:
 
 
 def utc_today_iso() -> str:
-    return datetime.now(timezone.utc).date().isoformat()
+    return datetime.now(ZoneInfo("Asia/Jerusalem")).date().isoformat()
 
 
 def _mean_field(
@@ -361,21 +362,21 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     meta["trimp_history"] = build_trimp_history(expanded, 42)
     meta["last_sync"] = datetime.now(timezone.utc).isoformat()
 
-    # Task 3: Gap detection — Runalyze activity dates with no corresponding FIT.
+    # Task 3: Gap detection — Runalyze activity dates with no load in training_load.json.
     guard_lines: list[str] = []
     try:
         seven_ago = (today_d - timedelta(days=7)).isoformat()
         runalyze_recent = {d for d in grouped.keys() if d >= seven_ago}
-        gap_dates = sorted(runalyze_recent - gcs_fit_dates)
+        tl_registered = registered_activity_dates()
+        gap_dates = sorted(runalyze_recent - tl_registered)
         if gap_dates:
             guard_lines.append(
                 "TRAINING-LOAD DATA INCOMPLETE: "
                 + ", ".join(gap_dates)
-                + " — activities are recorded in Runalyze but their FIT files haven't been "
-                "uploaded yet. CTL/ATL/TSB understate true load — advise the user to upload "
-                "the FIT, and do not treat today as a green light on load alone."
+                + " — these dates have Runalyze activities but no TSS registered in the "
+                "training load model. Upload the FIT file to register the load."
             )
-            logger.warning("Pipeline: gap dates (activity without FIT): %s", gap_dates)
+            logger.warning("Pipeline: gap dates (Runalyze activity without training load entry): %s", gap_dates)
     except Exception as e:
         logger.warning("Pipeline: gap detection failed: %s", e)
 
@@ -467,6 +468,24 @@ scheduler: BackgroundScheduler | None = None
 _scheduler_started = False
 
 
+def _init_plan_if_missing() -> None:
+    """Upload bundled plan.json to GCS on first deploy if GCS doesn't have one yet."""
+    try:
+        existing = load_plan()
+        if existing:
+            return
+        plan_path = os.path.join(os.path.dirname(__file__), "plan.json")
+        if not os.path.exists(plan_path):
+            return
+        with open(plan_path, encoding="utf-8") as f:
+            import json as _json
+            plan_data = _json.load(f)
+        save_plan(plan_data)
+        logger.info("Uploaded bundled plan.json to GCS.")
+    except Exception as e:
+        logger.warning("Could not init plan.json in GCS: %s", e)
+
+
 def init_scheduler() -> None:
     global scheduler, _scheduler_started
     if os.environ.get("DISABLE_SCHEDULER", "").lower() in ("1", "true", "yes"):
@@ -474,6 +493,7 @@ def init_scheduler() -> None:
     if _scheduler_started:
         return
     _scheduler_started = True
+    _init_plan_if_missing()
     scheduler = BackgroundScheduler(timezone=timezone.utc)
     scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=15, id="daily_pipeline")
     scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
@@ -983,6 +1003,20 @@ def healthz():
 def api_last_sync():
     db = load_metrics()
     return jsonify({"last_sync": (db.get("meta") or {}).get("last_sync")})
+
+
+@app.route("/update-plan", methods=["POST"])
+def update_plan():
+    if not _check_pipeline_secret():
+        abort(401)
+    body = request.get_json(force=True, silent=True) or {}
+    if not body:
+        return jsonify({"error": "empty body"}), 400
+    try:
+        save_plan(body)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"ok": True})
 
 
 @app.route("/settings")

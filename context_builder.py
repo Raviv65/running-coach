@@ -79,6 +79,25 @@ def load_briefing(date_str: str) -> str | None:
         return None
 
 
+def load_plan() -> dict:
+    try:
+        blob = _gcs_client().bucket(GCS_BUCKET).blob("plan.json")
+        if not blob.exists():
+            return {}
+        return json.loads(blob.download_as_text(encoding="utf-8"))
+    except Exception as e:
+        logger.warning("context_builder: could not load plan.json: %s", e)
+        return {}
+
+
+def save_plan(plan: dict) -> None:
+    _gcs_client().bucket(GCS_BUCKET).blob("plan.json").upload_from_string(
+        json.dumps(plan, indent=2, ensure_ascii=False),
+        content_type="application/json",
+    )
+    logger.info("context_builder: saved plan.json")
+
+
 def save_briefing(date_str: str, text: str) -> None:
     _gcs_client().bucket(GCS_BUCKET).blob(f"briefings/{date_str}.txt").upload_from_string(
         text, content_type="text/plain; charset=utf-8",
@@ -278,6 +297,56 @@ def build_context(db: dict[str, Any], today: str) -> str:
         rec_s = f"{int(rec)}%" if rec is not None else "—"
         lines.append(f"{d:<12} {hrv_s:>5} {rhr_s:>7} {sleep_s:>8} {sleepq_s:>7} {rec_s:>9}")
     lines.append(f"HRV 7d trend: {hrv_trend}")
+
+    # ── Trek goal and training plan ─────────────────────────────────────────
+    plan = load_plan()
+    trek = plan.get("trek") or {}
+    phase = plan.get("current_phase") or {}
+    sessions = plan.get("sessions") or {}
+
+    if trek:
+        trek_start = trek.get("start_date", "?")
+        days_to_trek = (date.fromisoformat(trek_start) - today_d).days if trek_start != "?" else "?"
+        lines += [
+            "",
+            "=== UPCOMING GOAL: TREK ===",
+            f"Event: {trek.get('name', '?')} | Start: {trek_start} ({days_to_trek} days away)",
+            f"Distance: ~{trek.get('distance_km', '?')} km | Total ascent: ~{trek.get('ascent_m', '?')} m | Duration: {trek.get('duration_days', '?')} days",
+        ]
+        if trek.get("notes"):
+            lines.append(f"Notes: {trek['notes']}")
+    if phase:
+        lines += [
+            "",
+            "=== CURRENT TRAINING PHASE ===",
+            f"Phase: {phase.get('name', '?')}",
+            f"Period: {phase.get('start_date', '?')} → {phase.get('end_date', '?')}",
+            f"Focus: {phase.get('focus', '?')}",
+        ]
+        if phase.get("nutrition"):
+            lines.append(f"Nutrition: {phase['nutrition']}")
+
+    if sessions:
+        lines += ["", "=== PLANNED SESSIONS — NEXT 7 DAYS ==="]
+        for i in range(7):
+            d = (today_d + timedelta(days=i)).isoformat()
+            s = sessions.get(d)
+            if i == 0:
+                label = f"TODAY ({d})"
+            elif i == 1:
+                label = f"TOMORROW ({d})"
+            else:
+                label = d
+            if s:
+                intensity = s.get("intensity", "?")
+                lines.append(f"  {label}: [{s.get('type', '?')}] {s.get('detail', '')}  [intensity: {intensity}]")
+            else:
+                lines.append(f"  {label}: (no planned session)")
+        lines.append(
+            "INTENSITY NOTE: Hill walks and pack walks are LOW intensity. "
+            "Apply HRV/TSB recovery gates only to HIGH-intensity sessions (threshold runs, intervals). "
+            "Do not block low-intensity sessions with the same thresholds as hard runs."
+        )
 
     # ── Last 3 morning briefings ─────────────────────────────────────────────
     lines += ["", "=== LAST 3 MORNING BRIEFINGS ==="]
