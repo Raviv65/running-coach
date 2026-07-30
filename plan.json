@@ -1,0 +1,84 @@
+{
+  "trek": {
+    "name": "Carros de Foc",
+    "start_date": "2026-08-28",
+    "duration_days": 6,
+    "distance_km": 60,
+    "ascent_m": 3620,
+    "notes": "High mountain circuit in Catalan Pyrenees, ~10 km/day with ~600 m daily ascent/descent"
+  },
+  "current_phase": {
+    "name": "Trek-prep block",
+    "start_date": "2026-07-28",
+    "end_date": "2026-08-27",
+    "focus": "descending, climbing, time-on-feet, pack carrying — not 10k speed",
+    "nutrition": "Fat-loss calorie deficit; easing toward maintenance from ~2026-08-09"
+  },
+  "sessions": {
+    "2026-07-29": {
+      "type": "Rest",
+      "detail": "Full rest day — no session",
+      "intensity": "none"
+    },
+    "2026-07-30": {
+      "type": "Hill walk",
+      "detail": "6 km / 170 m ascent with pack — low intensity trek prep",
+      "intensity": "low"
+    },
+    "2026-07-31": {
+      "type": "Easy run",
+      "detail": "30-40 min easy treadmill @ 6.3-7.0 km/h — aerobic base",
+      "intensity": "low"
+    },
+    "2026-08-01": {
+      "type": "Rest",
+      "detail": "Rest or light walk",
+      "intensity": "none"
+    },
+    "2026-08-02": {
+      "type": "Hill walk",
+      "detail": "8-10 km / 300 m ascent with pack — progressive trek prep",
+      "intensity": "low"
+    },
+    "2026-08-03": {
+      "type": "Steady run",
+      "detail": "40-45 min treadmill @ 7.4 km/h — aerobic steady state",
+      "intensity": "moderate"
+    },
+    "2026-08-04": {
+      "type": "Rest",
+      "detail": "Full rest day",
+      "intensity": "none"
+    },
+    "2026-08-05": {
+      "type": "Hill walk",
+      "detail": "10+ km / 400 m ascent with full pack — extended trek simulation",
+      "intensity": "low"
+    },
+    "2026-08-06": {
+      "type": "Easy run",
+      "detail": "30 min easy treadmill @ 6.3-7.0 km/h",
+      "intensity": "low"
+    },
+    "2026-08-07": {
+      "type": "Rest",
+      "detail": "Rest day",
+      "intensity": "none"
+    },
+    "2026-08-08": {
+      "type": "Quality run",
+      "detail": "35-40 min treadmill — include 10-15 min at 8.0-8.2 km/h",
+      "intensity": "moderate-high"
+    },
+    "2026-08-09": {
+      "type": "Hill walk",
+      "detail": "10-12 km with pack — nutrition transitions to maintenance today",
+      "intensity": "low"
+    },
+    "2026-08-10": {
+      "type": "Rest",
+      "detail": "Rest day",
+      "intensity": "none"
+    }
+  }
+}
