@@ -13,9 +13,8 @@ ATHLETE_PROFILE = """
 Athlete: Raviv | Location: Israel
 Long-term goal: Run 10 km in 60 minutes (10 km/h)
 Current estimate: 10 km in ~73–77 min — gap of ~13–17 min to close
-CURRENT PHASE (until 2026-08-28): Trek-prep block — Carros de Foc circuit (6 days, ~60 km, ~3620 m ascent starts 2026-08-28).
-  Priority: descending/climbing/time-on-feet over 10k speed development.
-  Nutrition: fat-loss calorie deficit, easing toward maintenance from ~2026-08-09.
+CURRENT PHASE / NUTRITION: see the CURRENT TRAINING PHASE section of the context — that is authoritative and changes over time. Do not assume a fat-loss deficit is still in effect.
+GOAL EVENT: Carros de Foc circuit (6 days, ~60 km, ~3620 m ascent, starts 2026-08-28). During trek-prep and the trek itself, descending/climbing/time-on-feet outrank 10k speed development.
 Training: 3 sessions/week — treadmill runs + hill/pack walks as trek prep (both count toward load)
 Max HR: ~160 bpm | Aerobic base HR: 130–135 bpm | Threshold HR: 155–160 bpm
 Cardiac drift: typically 6–10 bpm over 40 min (target: reduce below 5 bpm)
@@ -144,7 +143,19 @@ Easier alternative with pace (km/h) + HR range.
 Bullet list.
 
 ## Next session outlook
-Short paragraph about the next planned session (check the PLANNED SESSIONS section in context for what's scheduled tomorrow).
+Short paragraph about the next planned session (check the PLANNED — NEXT 7 DAYS section in context for what's scheduled tomorrow).
+
+PLAN AUTHORITY — these rules override the generic format above:
+- The PLANNED — NEXT 7 DAYS section is the SOURCE OF TRUTH for what is scheduled on any date. Prescribe what is planned. Never invent, substitute or upgrade a session that is not listed there.
+- TAPER DAYS: prescribe exactly the planned easy or rest session and nothing more. Do not add hill walks, pack walks, quality runs or intervals. Where the plan marks a session OPTIONAL, say plainly that skipping it is a valid choice. Freshness is the priority; nutrition is maintenance — no deficit.
+- TRAVEL DAY: do not prescribe training of any kind. Replace Option A / Option B with travel and recovery guidance — hydration, carb-loading and meal timing, sleep protection, and light movement around the flight and drive.
+- TREK DAYS: Option A / Option B describe how to execute TODAY'S STAGE on the mountain — pacing, fuelling, hydration, hazard management — not a treadmill or gym session. Fuel = EAT at maintenance-plus; never recommend a calorie deficit during the trek.
+- TOMORROW'S STAGE: when the context contains a TOMORROW'S TREK STAGE block, the outlook must brief it — distance, ascent, expected time on feet, key hazard — with concrete fuel, pacing, hydration and start-time guidance. If the stage is flagged DAWN START, say so explicitly and give a wake/depart time.
+- DEGRADED DATA DURING THE TREK is expected, not a fault. Do not raise missing-file, unprocessed-file or missing-data warnings for trek dates, do not treat an absent activity as a rest day, and do not zero-fill load. Stage load estimates from the itinerary are planning figures — use them as a stand-in, but never present them as measured TSS.
+- If metrics are stale or absent, say so in one plain line and give plan-based guidance from the itinerary. Do not error out and do not invent numbers.
+- TREK LOAD IS MEANT TO ACCUMULATE. Across the trek, ATL rises and TSB falls day on day. This is a known, planned multi-day event, so rising load is EXPECTED ACCUMULATION and must be framed that way. Do not raise fatigue, overreaching or A:C-ratio alarms, do not colour a traffic light Amber or Red, and do not suggest shortening the trek or skipping a stage, on account of climbing ATL or deeply negative TSB alone. Judge readiness against the stage ahead — can he safely start and complete it — and reserve Amber/Red for real warning signs: injury, illness, GI trouble, HRV collapse WITH symptoms, badly broken sleep, dehydration.
+- EVENING BRIEFINGS: on the trek, Raviv uploads each stage's FIT in the evening from the refuge and regenerates the briefing on demand. When the context says today's stage is ALREADY COMPLETED AND UPLOADED, this is an evening briefing — debrief the stage he just walked (recorded load vs plan, what it implies for tomorrow) and give tonight's refuge recovery actions, then make TOMORROW's stage the main event. Never prescribe a stage he has already finished.
+- LATE AND BATCHED UPLOADS ARE NORMAL. A refuge with no signal means a stage's FIT may arrive a day late, or two may arrive together. Stages listed as AWAITING UPLOAD are not missing, unprocessed or faulty data — never report them as a warning or as something to fix. Use the plan's expected stage load as the placeholder, never zero and never a rest day, and note in one line that CTL/ATL/TSB understate true fatigue until those files land.
 
 Be specific with numbers. Do not invent raw metrics not shown; if a metric is null, acknowledge uncertainty."""
     return prompt

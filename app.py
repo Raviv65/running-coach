@@ -10,6 +10,7 @@ import logging
 import math
 import os
 import tempfile
+import threading
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -20,7 +21,9 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, render_template, request
 
 from analyze import build_prompt, call_claude
-from context_builder import build_context, save_briefing, load_athlete_profile, load_plan, save_plan
+from context_builder import (
+    build_context, save_briefing, load_athlete_profile, load_plan, save_plan, in_trek_window,
+)
 from trimp_parser import compute_trimp_from_data, compute_trimp_from_file
 from fit_parser import parse_fit
 from training_load import (
@@ -362,13 +365,33 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
     meta["trimp_history"] = build_trimp_history(expanded, 42)
     meta["last_sync"] = datetime.now(timezone.utc).isoformat()
 
-    # Task 3: Gap detection — Runalyze activity dates with no load in training_load.json.
+    # Trek mode: during the trek there is no connectivity and no daily FIT upload, so
+    # absent data is expected. Suppress the data-quality guards for those dates rather
+    # than crying wolf every morning on the mountain.
     guard_lines: list[str] = []
+    try:
+        guard_plan = load_plan()
+    except Exception as e:
+        logger.warning("Pipeline: could not load plan for trek-mode guards: %s", e)
+        guard_plan = {}
+    on_trek = in_trek_window(guard_plan, today)
+    if on_trek:
+        guard_lines.append(
+            "TREK MODE ACTIVE: Raviv is on the Carros de Foc trek with limited connectivity. "
+            "Missing activities, missing FIT files and stale biometrics are EXPECTED for these dates "
+            "and are not a fault. Do not warn about them, do not treat an absent activity as a rest "
+            "day, and do not zero-fill load. Use the stage's planned load estimate as the stand-in. "
+            "If metrics are stale or absent, say so plainly in one line and coach from the itinerary."
+        )
+
+    # Task 3: Gap detection — Runalyze activity dates with no load in training_load.json.
     try:
         seven_ago = (today_d - timedelta(days=7)).isoformat()
         runalyze_recent = {d for d in grouped.keys() if d >= seven_ago}
         tl_registered = registered_activity_dates()
-        gap_dates = sorted(runalyze_recent - tl_registered)
+        gap_dates = sorted(
+            d for d in (runalyze_recent - tl_registered) if not in_trek_window(guard_plan, d)
+        )
         if gap_dates:
             guard_lines.append(
                 "TRAINING-LOAD DATA INCOMPLETE: "
@@ -386,7 +409,7 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
         if last_sync_ts:
             last_sync_dt = datetime.fromisoformat(last_sync_ts.replace("Z", "+00:00"))
             hours_since = (datetime.now(timezone.utc) - last_sync_dt).total_seconds() / 3600
-            if hours_since > 25:
+            if hours_since > 25 and not on_trek:
                 guard_lines.append(f"DATA MAY BE STALE (last sync {last_sync_ts})")
     except Exception as e:
         logger.warning("Pipeline: stale-data check failed: %s", e)
@@ -468,22 +491,32 @@ scheduler: BackgroundScheduler | None = None
 _scheduler_started = False
 
 
-def _init_plan_if_missing() -> None:
-    """Upload bundled plan.json to GCS on first deploy if GCS doesn't have one yet."""
+def _sync_bundled_plan() -> None:
+    """Push the bundled plan.json to GCS when GCS has none, or has an older version.
+
+    Version-gated so a deploy carries genuine plan updates forward without clobbering
+    edits made through /update-plan (which leave the version untouched).
+    """
     try:
-        existing = load_plan()
-        if existing:
-            return
         plan_path = os.path.join(os.path.dirname(__file__), "plan.json")
         if not os.path.exists(plan_path):
             return
         with open(plan_path, encoding="utf-8") as f:
             import json as _json
-            plan_data = _json.load(f)
-        save_plan(plan_data)
+            bundled = _json.load(f)
+
+        existing = load_plan()
+        if existing:
+            bundled_v = int(bundled.get("version") or 0)
+            stored_v = int(existing.get("version") or 0)
+            if bundled_v <= stored_v:
+                return
+            logger.info("Bundled plan.json v%s supersedes stored v%s.", bundled_v, stored_v)
+
+        save_plan(bundled)
         logger.info("Uploaded bundled plan.json to GCS.")
     except Exception as e:
-        logger.warning("Could not init plan.json in GCS: %s", e)
+        logger.warning("Could not sync plan.json to GCS: %s", e)
 
 
 def init_scheduler() -> None:
@@ -493,7 +526,7 @@ def init_scheduler() -> None:
     if _scheduler_started:
         return
     _scheduler_started = True
-    _init_plan_if_missing()
+    _sync_bundled_plan()
     scheduler = BackgroundScheduler(timezone=timezone.utc)
     scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=15, id="daily_pipeline")
     scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
@@ -613,6 +646,13 @@ def activity_log():
     return render_template("activity.html", rows=rows)
 
 
+# metrics.json and training_load.json are read-modify-write against GCS with no
+# optimistic concurrency, so two uploads landing together (the batched two-stages-at-
+# once case on the trek) could silently lose one. Serialise the whole handler; the
+# service runs a single worker, so a process lock is sufficient.
+_upload_lock = threading.Lock()
+
+
 @app.route("/upload-activity", methods=["GET", "POST"])
 def upload_activity():
     if request.method == "GET":
@@ -621,6 +661,11 @@ def upload_activity():
     if not f:
         return jsonify({"error": "no file"}), 400
 
+    with _upload_lock:
+        return _handle_activity_upload(f)
+
+
+def _handle_activity_upload(f):
     db = load_metrics()
     athlete = (db.get("meta") or {}).get("athlete") or {}
     hr_max = int(athlete.get("hr_max", 160))

@@ -12,22 +12,36 @@
     <button onclick="document.getElementById('file-input').click()" style="background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Choose Files</button>
   </div>
   <div id="results" style="margin-top:20px;"></div>
+  <div style="margin-top:22px; padding-top:18px; border-top:1px solid var(--border);">
+    <button id="regen-btn" onclick="regenerateBriefing()" style="background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:600;cursor:pointer;">🔄 Rebuild briefing now</button>
+    <div id="brief-status" style="margin-top:10px; font-size:0.9rem;"></div>
+    <div style="margin-top:8px; color:var(--muted); font-size:0.82rem;">Runs automatically after an upload. On the trek, upload the stage from the refuge in the evening and rebuild — the briefing will debrief the stage you just walked and preview tomorrow's.</div>
+  </div>
 </div>
 
 <script>
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const results = document.getElementById('results');
+const briefStatus = document.getElementById('brief-status');
+const briefBtn = document.getElementById('regen-btn');
 
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='#2563eb'; });
 dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor='var(--border)'; });
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor='var(--border)'; handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
-function handleFiles(files) {
+// Uploads run ONE AT A TIME. Each upload is a read-modify-write of metrics.json and
+// training_load.json, so firing them in parallel can drop one — exactly the case when
+// two stages are uploaded together after a refuge with no signal.
+async function handleFiles(files) {
   if (!files || !files.length) return;
   results.innerHTML = '';
-  Array.from(files).forEach(f => uploadFile(f));
+  let ok = 0;
+  for (const f of Array.from(files)) {
+    if (await uploadFile(f)) ok++;
+  }
+  if (ok > 0) regenerateBriefing();
 }
 
 function uploadFile(file) {
@@ -38,17 +52,40 @@ function uploadFile(file) {
 
   const fd = new FormData();
   fd.append('file', file);
-  fetch('/upload-activity', { method:'POST', body:fd })
+  return fetch('/upload-activity', { method:'POST', body:fd })
     .then(r => r.json())
     .then(data => {
       if (data.ok) {
         const r = data.result;
         row.innerHTML = `<b>${file.name}</b> — <span style="color:#15803d;">✅ ${r.date}</span> &nbsp; TSS: <b>${r.suunto_tss ?? r.trimp ?? '—'}</b> &nbsp; ${r.distance_km ?? '—'} km &nbsp; ${r.duration_min ?? '—'} min`;
-      } else {
-        row.innerHTML = `<b>${file.name}</b> — <span style="color:#dc2626;">❌ ${data.error}</span>`;
+        return true;
       }
+      row.innerHTML = `<b>${file.name}</b> — <span style="color:#dc2626;">❌ ${data.error}</span>`;
+      return false;
     })
-    .catch(() => { row.innerHTML = `<b>${file.name}</b> — <span style="color:#dc2626;">❌ Upload failed</span>`; });
+    .catch(() => {
+      row.innerHTML = `<b>${file.name}</b> — <span style="color:#dc2626;">❌ Upload failed</span>`;
+      return false;
+    });
+}
+
+// On the trek the stage is uploaded in the evening, so the briefing has to be
+// rebuilt on demand rather than waiting for the 05:30 job.
+async function regenerateBriefing() {
+  briefBtn.disabled = true;
+  briefStatus.innerHTML = '<span style="color:var(--muted)">⏳ Rebuilding briefing from the new upload… this takes a few seconds.</span>';
+  try {
+    const r = await fetch('/sync-now', { method:'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      briefStatus.innerHTML = '<span style="color:#15803d;">✅ Briefing updated — <a href="/">open today\'s briefing</a></span>';
+    } else {
+      briefStatus.innerHTML = `<span style="color:#dc2626;">❌ Briefing rebuild failed: ${d.error || 'unknown error'}</span>`;
+    }
+  } catch (e) {
+    briefStatus.innerHTML = '<span style="color:#dc2626;">❌ Briefing rebuild failed — check connectivity and retry.</span>';
+  }
+  briefBtn.disabled = false;
 }
 </script>
 {% endblock %}
