@@ -526,7 +526,6 @@ def init_scheduler() -> None:
     if _scheduler_started:
         return
     _scheduler_started = True
-    _sync_bundled_plan()
     scheduler = BackgroundScheduler(timezone=timezone.utc)
     scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=15, id="daily_pipeline")
     scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
@@ -534,8 +533,27 @@ def init_scheduler() -> None:
     logger.info("APScheduler started (05:15 UTC pipeline, 05:30 UTC email).")
 
 
+_plan_synced = False
+
+
+def _ensure_plan_synced() -> None:
+    """Push the bundled plan on first request, whatever the scheduler is doing.
+
+    Deliberately NOT inside init_scheduler(): that returns early when
+    DISABLE_SCHEDULER=1 (as it is on Cloud Run, where Cloud Scheduler drives
+    /run-pipeline instead), which meant deploys silently never carried plan
+    updates to GCS.
+    """
+    global _plan_synced
+    if _plan_synced:
+        return
+    _plan_synced = True
+    _sync_bundled_plan()
+
+
 @app.before_request
-def _ensure_scheduler() -> None:
+def _ensure_startup() -> None:
+    _ensure_plan_synced()
     init_scheduler()
 
 
