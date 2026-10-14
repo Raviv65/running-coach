@@ -194,6 +194,15 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
                     for field in _PRESERVE:
                         if m.get(field) is not None and match.get(field) is None:
                             match[field] = m[field]
+                    # The suunto-* row is about to be dropped and the Runalyze id
+                    # becomes canonical. Remember the old id so pages, tabs and
+                    # bookmarks opened before this merge still resolve instead of
+                    # 404-ing out from under the user.
+                    old_id = str(m.get("id", ""))
+                    if old_id:
+                        aliases = match.setdefault("prev_ids", [])
+                        if old_id not in aliases:
+                            aliases.append(old_id)
                 else:
                     grouped.setdefault(day, []).append(m)
         db["activities"] = grouped
@@ -751,44 +760,56 @@ def _handle_activity_upload(f):
     return jsonify({"ok": True, "result": {k: v for k, v in result.items() if k != "hr_timeseries"}})
 
 
+def _find_activity(db: dict, activity_id: str) -> dict | None:
+    """Find an activity by its current id, or by an id it carried before a merge.
+
+    A FIT upload creates a `suunto-<date>-<minutes>` row; a later Runalyze sync
+    folds it into the Runalyze row and the numeric id becomes canonical. Matching
+    `prev_ids` keeps already-open pages working across that switch. Current ids
+    are checked first so an exact match always wins over an alias.
+    """
+    days = (db.get("activities") or {}).values()
+    for day_acts in days:
+        for a in day_acts:
+            if str(a.get("id", "")) == activity_id:
+                return a
+    for day_acts in days:
+        for a in day_acts:
+            if any(str(x) == activity_id for x in (a.get("prev_ids") or [])):
+                return a
+    return None
+
+
 @app.route("/activity/<activity_id>/label", methods=["POST"])
 def save_label(activity_id):
     label = (request.json or {}).get("label", "").strip()
     db = load_metrics()
-    for day_acts in (db.get("activities") or {}).values():
-        for a in day_acts:
-            if str(a.get("id", "")) == activity_id:
-                a["label"] = label
-                save_metrics(db)
-                return jsonify({"ok": True})
-    abort(404)
+    a = _find_activity(db, activity_id)
+    if not a:
+        abort(404)
+    a["label"] = label
+    save_metrics(db)
+    return jsonify({"ok": True})
 
 
 @app.route("/activity/<activity_id>/segments", methods=["POST"])
 def save_segments(activity_id):
     db = load_metrics()
-    acts = db.get("activities", {})
-    for day_acts in acts.values():
-        for a in day_acts:
-            if str(a.get("id", "")) == activity_id:
-                a["segments"] = request.json.get("segments", [])
-                save_metrics(db)
-                return jsonify({"ok": True})
-    abort(404)
+    a = _find_activity(db, activity_id)
+    if not a:
+        abort(404)
+    a["segments"] = request.json.get("segments", [])
+    save_metrics(db)
+    return jsonify({"ok": True})
 
 
 @app.route("/activity/<activity_id>")
 def activity_detail(activity_id):
     db = load_metrics()
-    acts = db.get("activities", {})
-    activity = None
-    for day_acts in acts.values():
-        for a in day_acts:
-            if str(a.get("id", "")) == activity_id:
-                activity = dict(a)  # copy so we can enrich without mutating db
-                break
-    if not activity:
+    found = _find_activity(db, activity_id)
+    if not found:
         abort(404)
+    activity = dict(found)  # copy so we can enrich without mutating db
 
     # Enrich with Suunto JSON from GCS if available for this date
     gcs_data = load_activity_json_from_gcs(activity.get("date", ""))
@@ -966,15 +987,7 @@ def _build_activity_debrief_prompt(activity: dict, athlete: dict, profile: dict)
 @app.route("/activity/<activity_id>/debrief", methods=["POST"])
 def generate_activity_debrief(activity_id):
     db = load_metrics()
-    acts = db.get("activities", {})
-    activity_row = None
-    for day_acts in acts.values():
-        for a in day_acts:
-            if str(a.get("id", "")) == activity_id:
-                activity_row = a
-                break
-        if activity_row:
-            break
+    activity_row = _find_activity(db, activity_id)
     if not activity_row:
         abort(404)
 

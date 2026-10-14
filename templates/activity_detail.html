@@ -36,6 +36,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <script>
+// A 404 here means the activity's id changed under us (a Runalyze sync folds an
+// uploaded suunto-* row into the Runalyze row). Saying "check your connection"
+// for that sent us looking at the wrong thing entirely.
+async function postJson(url, body) {
+  const opts = body === undefined
+    ? { method: 'POST' }
+    : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  let r;
+  try {
+    r = await fetch(url, opts);
+  } catch (e) {
+    throw new Error('No response from the server — check your connection and retry.');
+  }
+  if (r.status === 404) {
+    throw new Error("This activity's ID changed after a data sync. Reload the page from the Activities list and try again.");
+  }
+  let data = null;
+  try { data = await r.json(); } catch (e) { /* non-JSON error page */ }
+  if (!r.ok) {
+    throw new Error((data && data.error) || `Server error ${r.status}${r.status === 504 ? ' — the request timed out.' : '.'}`);
+  }
+  if (data && data.ok === false) throw new Error(data.error || 'Request failed.');
+  return data;
+}
+
 {% if zones %}
 new Chart(document.getElementById('zoneChart'), {
   type: 'bar',
@@ -235,21 +260,14 @@ function saveSegments() {
       segments.push({ duration: dur, speed: spd });
     }
   }
-  fetch('/activity/{{ activity.get("id") }}/segments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ segments })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      document.getElementById('seg-summary').innerHTML =
-        '<p style="color:#15803d;font-size:0.88rem;">✅ Segments saved.</p>';
-    }
-  })
-  .catch(() => {
+  postJson('/activity/{{ activity.get("id") }}/segments', { segments })
+  .then(() => {
     document.getElementById('seg-summary').innerHTML =
-      '<p style="color:#dc2626;">❌ Save failed.</p>';
+      '<p style="color:#15803d;font-size:0.88rem;">✅ Segments saved.</p>';
+  })
+  .catch(err => {
+    document.getElementById('seg-summary').innerHTML =
+      `<p style="color:#dc2626;">❌ ${err.message}</p>`;
   });
 }
 
@@ -283,22 +301,16 @@ function generateDebrief() {
   btn.textContent = '⏳ Generating…';
   content.innerHTML = '<p class="sub" style="padding:8px 0;">Asking Claude to analyse your run… this may take a few seconds.</p>';
 
-  fetch('/activity/{{ activity.get("id") }}/debrief', { method: 'POST' })
-    .then(r => r.json())
+  postJson('/activity/{{ activity.get("id") }}/debrief')
     .then(data => {
-      if (data.ok) {
-        const dateStr = (data.generated_utc || '').slice(0, 10);
-        content.innerHTML = data.html +
-          `<p style="color:var(--muted);font-size:0.8rem;margin-top:12px;border-top:1px solid var(--border);padding-top:8px;">Generated ${dateStr}</p>`;
-        btn.textContent = '↻ Regenerate';
-      } else {
-        content.innerHTML = `<p style="color:#dc2626;">❌ ${data.error || 'Failed to generate debrief.'}</p>`;
-        btn.textContent = '✨ Generate Debrief';
-      }
+      const dateStr = (data.generated_utc || '').slice(0, 10);
+      content.innerHTML = data.html +
+        `<p style="color:var(--muted);font-size:0.8rem;margin-top:12px;border-top:1px solid var(--border);padding-top:8px;">Generated ${dateStr}</p>`;
+      btn.textContent = '↻ Regenerate';
       btn.disabled = false;
     })
-    .catch(() => {
-      content.innerHTML = '<p style="color:#dc2626;">❌ Request failed. Check your connection.</p>';
+    .catch(err => {
+      content.innerHTML = `<p style="color:#dc2626;">❌ ${err.message}</p>`;
       btn.textContent = '✨ Generate Debrief';
       btn.disabled = false;
     });
