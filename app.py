@@ -160,6 +160,10 @@ def run_daily_pipeline(send_email_now: bool = False) -> dict[str, Any]:
             "epoc", "calories_kcal", "trimp", "tss", "training_stress_score", "segments", "hr_timeseries",
             "avg_hr", "max_hr", "peak_training_effect", "recovery_time_hrs",
             "step_count", "debrief_html", "debrief_generated_utc", "source",
+            # Without this, each pipeline run rebuilds the Runalyze row from the
+            # API and the id aliases vanish, so a stale link only survives until
+            # the next sync — minutes, in practice.
+            "prev_ids",
         }
         existing_acts = db.get("activities", {})
         # Build a lookup of existing Runalyze activities by ID for fast merge
