@@ -1,5 +1,5 @@
 """
-Flask web app: dashboard + APScheduler (05:15 UTC pipeline, 05:30 UTC email).
+Flask web app: dashboard + APScheduler (08:15 pipeline, 08:30 email, Asia/Jerusalem).
 """
 
 from __future__ import annotations
@@ -490,7 +490,7 @@ def scheduled_email() -> None:
         md = b.get("markdown")
 
         if not md:
-            logger.info("No briefing for %s at 05:30; re-running pipeline with email.", today)
+            logger.info("No briefing for %s at email time; re-running pipeline with email.", today)
             run_daily_pipeline(send_email_now=True)
             return
 
@@ -539,11 +539,13 @@ def init_scheduler() -> None:
     if _scheduler_started:
         return
     _scheduler_started = True
-    scheduler = BackgroundScheduler(timezone=timezone.utc)
-    scheduler.add_job(scheduled_pipeline, "cron", hour=5, minute=15, id="daily_pipeline")
-    scheduler.add_job(scheduled_email, "cron", hour=5, minute=30, id="daily_email")
+    # Local zone, not UTC: a UTC schedule drifts an hour at every DST change,
+    # which is what moved the 08:30 email to 07:30 when winter time started.
+    scheduler = BackgroundScheduler(timezone=ZoneInfo("Asia/Jerusalem"))
+    scheduler.add_job(scheduled_pipeline, "cron", hour=8, minute=15, id="daily_pipeline")
+    scheduler.add_job(scheduled_email, "cron", hour=8, minute=30, id="daily_email")
     scheduler.start()
-    logger.info("APScheduler started (05:15 UTC pipeline, 05:30 UTC email).")
+    logger.info("APScheduler started (08:15 pipeline, 08:30 email, Asia/Jerusalem).")
 
 
 _plan_synced = False
@@ -1049,7 +1051,7 @@ def _check_pipeline_secret() -> bool:
 
 @app.route("/run-pipeline", methods=["POST"])
 def run_pipeline():
-    """Called by Cloud Scheduler at 05:00 and 05:15 UTC to generate the briefing."""
+    """Called by Cloud Scheduler at 08:00 and 08:15 Asia/Jerusalem to generate the briefing."""
     if not _check_pipeline_secret():
         return jsonify({"ok": False, "error": "unauthorized"}), 403
     try:
@@ -1062,7 +1064,7 @@ def run_pipeline():
 
 @app.route("/trigger-email", methods=["POST"])
 def trigger_email():
-    """Called by Cloud Scheduler at 05:30 UTC (and manually) to send the briefing email."""
+    """Called by Cloud Scheduler at 08:30 Asia/Jerusalem (and manually) to send the briefing email."""
     if not _check_pipeline_secret():
         return jsonify({"ok": False, "error": "unauthorized"}), 403
     try:

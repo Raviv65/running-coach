@@ -4,11 +4,13 @@ Daily automated training briefing for a runner targeting **10 km in 60 minutes**
 
 ## Features
 
-- **05:00 UTC** — Pull Runalyze data, recompute load metrics, call Claude, save JSON, push to GitHub (if configured).
-- **05:30 UTC** — Send the same briefing by email (HTML + plain text).
+- **08:00 Israel time** — Pull Runalyze data, recompute load metrics, call Claude, save JSON, push to GitHub (if configured).
+- **08:30 Israel time** — Send the same briefing by email (HTML + plain text).
 - **Dashboard** — Today’s metrics and briefing; **History** — 90-day Chart.js trends; **Activities** — log with TRIMP/TSS.
 
-Scheduler timezone is **UTC** (05:00 UTC = **08:00** Israel standard time; adjust mentally for DST).
+Schedules are pinned to **Asia/Jerusalem**, in both Cloud Scheduler and APScheduler, so the
+delivery time stays put across DST. Do not express these in UTC: a UTC schedule silently
+moves an hour twice a year (that is how the 08:30 email became 07:30 at the 2026 switch).
 
 ## Local setup
 
@@ -84,7 +86,7 @@ Keys under `metrics` are **ISO dates** (UTC calendar day used for the pipeline).
 
 5. Use **exactly one Gunicorn worker** (`--workers 1` as in `render.yaml`) so a single process owns APScheduler.
 
-6. Optional: add a **Cron Job** that `curl`s your `/healthz` periodically if the service sleeps on a free plan—paid/always-on instances are better for reliable 05:00 / 05:30 UTC jobs.
+6. Optional: add a **Cron Job** that `curl`s your `/healthz` periodically if the service sleeps on a free plan—paid/always-on instances are better for reliable 08:00 / 08:30 Israel-time jobs.
 
 ## Project files
 
